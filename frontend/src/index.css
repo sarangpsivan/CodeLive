@@ -1,0 +1,17 @@
+/* src/index.css */
+@import 'tailwindcss';
+
+@layer base {
+  :root {
+    --primary-purple: #50207A;
+    --accent-lavender: #D6B9FC;
+    --accent-blue: #838CE5;
+    --dark-bg: #111111;
+    --dark-card: #1C1C1E;
+  }
+
+  body {
+    background-color: var(--dark-bg);
+    font-family: 'Poppins', sans-serif; /* Also set the font here */
+  }
+}
