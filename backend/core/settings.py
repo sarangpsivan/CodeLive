@@ -27,6 +27,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -178,5 +180,15 @@ REST_AUTH = {
     'JWT_AUTH_HTTPONLY': False,
 }
 
-# NOTE: All custom adapters (ACCOUNT_ADAPTER, SOCIALACCOUNT_ADAPTER) and
-# the LOGIN_REDIRECT_URL setting have been removed as they are not needed.
+# ASGI application definition to tell Django to use Channels
+ASGI_APPLICATION = "core.asgi.application"
+
+# Channel layer configuration for Redis
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
