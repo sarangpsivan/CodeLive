@@ -42,7 +42,6 @@ export const AuthProvider = ({ children }) => {
         navigate('/login');
     };
     
-    // New function to handle setting state after social login
     const setUserAndTokens = (accessToken, refreshToken) => {
         const tokens = { access: accessToken, refresh: refreshToken };
         setAuthTokens(tokens);
@@ -50,6 +49,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('authTokens', JSON.stringify(tokens));
     };
     
+    // This useEffect hook contains the token refresh logic
     useEffect(() => {
         const updateToken = async () => {
             if (!authTokens) {
@@ -81,6 +81,7 @@ export const AuthProvider = ({ children }) => {
             updateToken();
         }
 
+        // Set an interval to refresh the token every 4 minutes
         const fourMinutes = 1000 * 60 * 4;
         const interval = setInterval(updateToken, fourMinutes);
         return () => clearInterval(interval);
@@ -92,7 +93,7 @@ export const AuthProvider = ({ children }) => {
         authTokens,
         loginUser,
         logoutUser,
-        setUserAndTokens, // Export the new function
+        setUserAndTokens,
     };
 
     return <AuthContext.Provider value={contextData}>{!loading && children}</AuthContext.Provider>;

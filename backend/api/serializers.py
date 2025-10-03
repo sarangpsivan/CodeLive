@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Project
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Membership
+from .models import Folder, File
 
 class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -33,7 +35,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'owner', 'created_at']
+        fields = ['id', 'name', 'owner', 'created_at', 'room_code']
+        read_only_fields = ['room_code'] # Ensure it can't be set by the user
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -45,3 +48,44 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['first_name'] = user.first_name
 
         return token
+    
+class MemberSerializer(serializers.ModelSerializer):
+    # To show the user's name instead of just their ID
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = Membership
+        fields = ['id', 'user', 'username', 'role']
+
+class FileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = ['id', 'name']
+
+class FolderSerializer(serializers.ModelSerializer):
+    files = FileSerializer(many=True, read_only=True)
+    subfolders = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Folder
+        fields = ['id', 'name', 'files', 'subfolders']
+
+    def get_subfolders(self, obj):
+        # Recursively serialize subfolders
+        subfolders = Folder.objects.filter(parent=obj)
+        return FolderSerializer(subfolders, many=True).data
+    
+class FileDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = ['id', 'name', 'content', 'folder', 'project']
+
+class FileCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = ['name', 'folder', 'project']
+
+class FolderCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Folder
+        fields = ['name', 'parent', 'project']

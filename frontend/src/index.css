@@ -1,17 +1,21 @@
-/* src/index.css */
 @import 'tailwindcss';
 
 @layer base {
   :root {
-    --primary-purple: #50207A;
+    --primary-purple: #8B5CF6;
     --accent-lavender: #D6B9FC;
     --accent-blue: #838CE5;
-    --dark-bg: #111111;
-    --dark-card: #1C1C1E;
+    --dark-bg: #000000; 
+    --dark-card: #161B22;
+    --header-dark: #1F242A;
+    --activity-bar-dark: #1F242A;
+    --tab-bar-dark: #2D333B;
+    --editor-bg: #1E1E1E;
   }
 
   body {
     background-color: var(--dark-bg);
-    font-family: 'Poppins', sans-serif; /* Also set the font here */
+    color: white;
+    font-family: 'Poppins', sans-serif;
   }
 }

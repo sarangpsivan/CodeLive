@@ -6,3 +6,5 @@ __pycache__/
 
 # Django database file (for development)
 db.sqlite3
+
+.env
