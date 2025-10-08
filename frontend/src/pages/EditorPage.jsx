@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router-dom';
 import TopBar from '../components/TopBar';
@@ -7,10 +7,10 @@ import FileExplorer from '../components/FileExplorer';
 import ChatPanel from '../components/ChatPanel';
 import axiosInstance from '../utils/axiosInstance';
 import { FaTimes, FaSync, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
+import AuthContext from '../context/AuthContext';
 
 // --- Reusable Panel Components ---
 
-// This is the updated PreviewPanel with a working "Open in New Tab" button
 const PreviewPanel = ({ htmlCode, onClose }) => {
     const iframeRef = useRef(null);
     const reloadIframe = () => { 
@@ -21,7 +21,7 @@ const PreviewPanel = ({ htmlCode, onClose }) => {
         const blob = new Blob([htmlCode], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
-        URL.revokeObjectURL(url); // Clean up the URL object
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -55,12 +55,10 @@ const OutputPanel = ({ output, onClose }) => (
     </div>
 );
 
-// This is the new "..." menu component
 const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
 
-    // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -107,7 +105,7 @@ const EditorPage = () => {
     const [project, setProject] = useState(null);
     const [openFiles, setOpenFiles] = useState([]);
     const [activeFileId, setActiveFileId] = useState(null);
-    const [sidePanel, setSidePanel] = useState(null); // 'output' or 'preview'
+    const [sidePanel, setSidePanel] = useState(null);
     const [output, setOutput] = useState('');
     const [isExecuting, setIsExecuting] = useState(false);
     const [messages, setMessages] = useState([]);
@@ -115,6 +113,7 @@ const EditorPage = () => {
     const [activeActivityBarTab, setActiveActivityBarTab] = useState('explorer');
     const socketRef = useRef(null);
     const saveTimeoutRef = useRef(null);
+    const { authTokens } = useContext(AuthContext);
 
     const executableLanguages = ['python', 'javascript', 'cpp', 'java'];
     const dummyCollaborators = [
@@ -129,29 +128,34 @@ const EditorPage = () => {
             .then(res => setProject(res.data))
             .catch(err => console.error("Failed to fetch project details", err));
 
-        const socket = new WebSocket(`ws://localhost:8000/ws/project/${projectId}/`);
-        socketRef.current = socket;
+        // Establish WebSocket connection with authentication
+        if (authTokens) {
+            const socket = new WebSocket(
+                `ws://localhost:8000/ws/project/${projectId}/?token=${authTokens.access}`
+            );
+            socketRef.current = socket;
 
-        socket.onopen = () => console.log("WebSocket connection established");
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'code_update') {
-                setOpenFiles(prevFiles => prevFiles.map(f =>
-                    f.id === activeFileId ? { ...f, content: data.message } : f
-                ));
-            }
-            else if (data.type === 'chat_message') { 
-                setMessages(prev => [...prev, data]); 
-            }
-            else if (data.type === 'file_tree_update') { 
-                setExplorerRefreshKey(prev => prev + 1); 
-            }
-        };
+            socket.onopen = () => console.log("WebSocket connection established");
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'code_update') {
+                    setOpenFiles(prevFiles => prevFiles.map(f =>
+                        f.id === activeFileId ? { ...f, content: data.message } : f
+                    ));
+                }
+                else if (data.type === 'chat_message') { 
+                    setMessages(prev => [...prev, data]); 
+                }
+                else if (data.type === 'file_tree_update') { 
+                    setExplorerRefreshKey(prev => prev + 1); 
+                }
+            };
 
-        socket.onclose = () => console.log("WebSocket connection closed");
+            socket.onclose = () => console.log("WebSocket connection closed");
 
-        return () => socket.close();
-    }, [projectId, activeFileId]);
+            return () => socket.close();
+        }
+    }, [projectId, activeFileId, authTokens]);
 
     const getLanguageFromFile = (fileName) => {
         const extension = fileName.split('.').pop();
@@ -168,7 +172,6 @@ const EditorPage = () => {
         }
     };
 
-    // Simplified file selection - panels are now controlled by the menu
     const handleFileSelect = (fileId) => {
         const existingFile = openFiles.find(f => f.id === fileId);
         if (existingFile) {
@@ -199,7 +202,6 @@ const EditorPage = () => {
                 setSidePanel(null);
             }
         }
-        // Close preview if we're closing an HTML file
         if (fileToClose?.language === 'html' && sidePanel === 'preview') {
             setSidePanel(null);
         }
@@ -270,7 +272,6 @@ const EditorPage = () => {
 
     return (
         <div className="flex flex-col h-screen bg-dark-bg text-white font-sans">
-            {/* Pass the projectId to the TopBar for the back button */}
             <TopBar 
                 projectId={projectId}
                 projectTitle={project?.name || 'Loading...'} 
@@ -304,7 +305,6 @@ const EditorPage = () => {
 
                 <main className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-shrink-0 flex items-center justify-between bg-tab-bar-dark border-b border-gray-800">
-                        {/* File Tabs */}
                         <div className="flex">
                             {openFiles.map(file => (
                                 <div 
@@ -322,7 +322,6 @@ const EditorPage = () => {
                                 </div>
                             ))}
                         </div>
-                        {/* Editor Actions Menu ("...") */}
                         <div className="pr-2">
                             <EditorActions 
                                 onShowOutput={() => setSidePanel('output')}
@@ -332,7 +331,6 @@ const EditorPage = () => {
                         </div>
                     </div>
 
-                    {/* Vertical Split Layout */}
                     <div className="flex-grow flex flex-row">
                         <div className={sidePanel ? "w-1/2" : "w-full"}>
                             <Editor

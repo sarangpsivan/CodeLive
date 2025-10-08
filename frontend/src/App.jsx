@@ -10,6 +10,7 @@ import PublicRoute from './utils/PublicRoute';
 import Header from './components/Header';
 import SocialAuthCallback from './pages/SocialAuthCallback';
 import ProjectDetailPage from './pages/ProjectDetailPage';
+import JoinPage from './pages/JoinPage';
 
 const ProtectedLayout = () => {
     return (
@@ -30,6 +31,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/join" element={<JoinPage />} />
         <Route path="/social-auth-callback" element={<SocialAuthCallback />} />
       </Route>
 

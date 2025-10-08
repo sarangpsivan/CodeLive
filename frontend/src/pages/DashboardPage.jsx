@@ -7,11 +7,13 @@ import StatCard from '../components/StatCard';
 import ProjectCard from '../components/ProjectCard';
 import ActionCard from '../components/ActionCard';
 import CreateProjectModal from '../components/CreateProjectModal';
+import JoinProjectModal from '../components/JoinProjectModal'; // 1. Import the new modal
 
 const DashboardPage = () => {
     const { user } = useContext(AuthContext);
     const [projects, setProjects] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isJoinModalOpen, setIsJoinModalOpen] = useState(false); // 2. Add state for join modal
 
     const fetchProjects = () => {
          axiosInstance.get('/api/projects/')
@@ -27,12 +29,28 @@ const DashboardPage = () => {
         setProjects([...projects, newProject]);
     };
 
+    const handleProjectJoined = (joinedProject) => {
+        // Add the newly joined project to the list if it's not already there
+        setProjects(prevProjects => {
+            if (!prevProjects.find(p => p.id === joinedProject.id)) {
+                return [...prevProjects, joinedProject];
+            }
+            return prevProjects;
+        });
+    };
+
     return (
         <>
             <CreateProjectModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onProjectCreated={handleProjectCreated}
+            />
+            {/* 3. Render the new modal */}
+            <JoinProjectModal 
+                isOpen={isJoinModalOpen}
+                onClose={() => setIsJoinModalOpen(false)}
+                onProjectJoined={handleProjectJoined}
             />
             <main className="flex flex-col lg:flex-row gap-8 p-8 font-sans h-full">
                 {/* Sidebar Area */}
@@ -61,7 +79,6 @@ const DashboardPage = () => {
                         <p className="text-gray-400 mt-2">Ready to build something amazing? Create a new project or join an existing one.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                        {/* The onClick handler is now passed as a prop, and the wrapper div is gone */}
                         <ActionCard
                             icon={<FaPlus />}
                             title="Create New Project"
@@ -70,12 +87,13 @@ const DashboardPage = () => {
                             primary
                             onClick={() => setIsModalOpen(true)}
                         />
+                        {/* 4. Update the Join Project card's onClick */}
                         <ActionCard
                             icon={<FaUserFriends />}
                             title="Join Project"
                             description="Collaborate on existing projects with your team."
                             buttonText="Join Project"
-                            onClick={() => alert("Join project functionality coming soon!")}
+                            onClick={() => setIsJoinModalOpen(true)}
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

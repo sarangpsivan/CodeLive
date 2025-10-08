@@ -9,6 +9,8 @@ from .views import FileDetailView
 from .views import FileCreateView, FolderCreateView
 from .views import FolderDetailView
 from .views import CodeExecutionView
+from .views import JoinProjectView
+from .views import MembershipDetailView
 
 urlpatterns = [
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -23,4 +25,6 @@ urlpatterns = [
     path("folders/create/", FolderCreateView.as_view(), name="folder-create"),
     path("folders/<int:pk>/", FolderDetailView.as_view(), name="folder-detail"),
     path("execute/", CodeExecutionView.as_view(), name="code-execute"),
+    path("projects/join/", JoinProjectView.as_view(), name="project-join"),
+    path("memberships/<int:pk>/", MembershipDetailView.as_view(), name="membership-detail"),
 ]

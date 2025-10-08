@@ -1,9 +1,7 @@
-// src/pages/HomePage.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaCode, FaUsers, FaBolt } from 'react-icons/fa';
 
-// We'll accept a 'featured' prop to add the special glow effect
 const FeatureCard = ({ icon, title, children, featured = false }) => (
     <div className={`bg-[var(--dark-card)] p-8 rounded-2xl border border-gray-800 hover:border-[var(--primary-purple)] transition ${
         featured ? 'shadow-[0_0_25px_rgba(131,140,229,0.3)] border-[var(--accent-blue)]' : ''
@@ -26,8 +24,7 @@ const HomePage = () => {
             </header>
 
             <main className="container mx-auto text-center px-6 py-24">
-                {/* Applying gradient to the main headline */}
-                <h2 className="text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-[var(--accent-lavender)] to-[var(--accent-blue)] bg-clip-text text-transparent">
+                <h2 className="text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-[var(--accent-lavender)] to-[var(--accent-blue)] bg-clip-text text-transparent pb-4">
                     Build. Collaborate. Deploy.
                 </h2>
                 <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-10">
@@ -43,7 +40,6 @@ const HomePage = () => {
                 <FeatureCard icon={<FaCode />} title="Real-time Coding">
                     Write code together with your team in real-time with advanced collaboration features and live cursors.
                 </FeatureCard>
-                {/* Adding the 'featured' prop to the middle card to apply the glow */}
                 <FeatureCard icon={<FaUsers />} title="Team Collaboration" featured={true}>
                     Invite team members, share projects, and work together seamlessly with real-time sync across all devices.
                 </FeatureCard>

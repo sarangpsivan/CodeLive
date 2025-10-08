@@ -31,12 +31,13 @@ class UserSerializer(serializers.ModelSerializer):
         return user
     
 class ProjectSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.username')
+    owner = serializers.ReadOnlyField(source='owner.id')
+    member_count = serializers.IntegerField(source='membership_set.count', read_only=True)
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'owner', 'created_at', 'room_code']
-        read_only_fields = ['room_code'] # Ensure it can't be set by the user
+        fields = ['id', 'name', 'owner', 'created_at', 'room_code', 'member_count']
+        read_only_fields = ['room_code']
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -46,16 +47,17 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Add custom claims to the token
         token['username'] = user.username
         token['first_name'] = user.first_name
+        token['user_id'] = user.id
 
         return token
     
 class MemberSerializer(serializers.ModelSerializer):
-    # To show the user's name instead of just their ID
-    username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
 
     class Meta:
         model = Membership
-        fields = ['id', 'user', 'username', 'role']
+        fields = ['id', 'user', 'first_name', 'email', 'role']
 
 class FileSerializer(serializers.ModelSerializer):
     class Meta:

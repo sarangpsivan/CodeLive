@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import generics
 from .serializers import UserSerializer, ProjectSerializer
-from .models import Project
+from .models import Project, Membership
 from rest_framework.permissions import IsAuthenticated
 from .serializers import MyTokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -22,6 +22,7 @@ import time
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.db.models import Q 
 
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -29,15 +30,15 @@ class CreateUserView(generics.CreateAPIView):
 
 class ProjectListCreateView(generics.ListCreateAPIView):
     serializer_class = ProjectSerializer
-    permission_classes = [IsAuthenticated] # Only authenticated users can access this view
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # This view should only return projects owned by the currently logged-in user
-        return Project.objects.filter(owner=self.request.user)
+        return Project.objects.filter(membership__user=self.request.user).distinct()
 
     def perform_create(self, serializer):
-        # When a new project is created, set the owner to the current user
-        serializer.save(owner=self.request.user)
+        project = serializer.save(owner=self.request.user)
+        Membership.objects.create(project=project, user=self.request.user, role=Membership.Role.ADMIN)
+
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
@@ -187,3 +188,62 @@ class CodeExecutionView(APIView):
 
         except requests.exceptions.RequestException as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class JoinProjectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        room_code = request.data.get('room_code')
+        if not room_code:
+            return Response({'error': 'Room code is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            project = Project.objects.get(room_code=room_code)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project with this code does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if user is already a member
+        if Membership.objects.filter(project=project, user=request.user).exists():
+            return Response({'message': 'You are already a member of this project.'}, status=status.HTTP_200_OK)
+
+        # Add the user to the project with a default 'editor' role
+        membership = Membership.objects.create(project=project, user=request.user, role=Membership.Role.EDITOR)
+
+        # Send real-time signal for collaborator updates
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{project.id}',
+            {
+                'type': 'collaborator_update',
+                'message': 'A new member has joined.'
+            }
+        )
+
+        serializer = ProjectSerializer(project)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class MembershipDetailView(generics.DestroyAPIView):
+    queryset = Membership.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        membership = self.get_object()
+        project = membership.project
+        current_user = request.user
+
+        if not (project.owner == current_user or membership.user == current_user):
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        project_id_for_broadcast = project.id
+        self.perform_destroy(membership)
+
+        # Send real-time signal for collaborator updates
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{project_id_for_broadcast}',
+            {
+                'type': 'collaborator_update',
+                'message': 'A member has left or been removed.'
+            }
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
