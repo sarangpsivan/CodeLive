@@ -15,6 +15,11 @@ class Project(models.Model):
 
 # Model to manage which users are members of which projects
 class Membership(models.Model):
+
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        APPROVED = 'APPROVED', 'Approved'
+
     class Role(models.TextChoices):
         ADMIN = 'ADMIN', 'Admin'
         EDITOR = 'EDITOR', 'Editor'
@@ -23,10 +28,10 @@ class Membership(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.VIEWER)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Ensures a user can't be added to the same project twice
         unique_together = ('project', 'user')
 
     def __str__(self):

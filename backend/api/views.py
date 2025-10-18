@@ -1,74 +1,250 @@
 from django.contrib.auth.models import User
-from rest_framework import generics
-from .serializers import UserSerializer, ProjectSerializer
-from .models import Project, Membership
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import MyTokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Membership
-from .serializers import MemberSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Folder
-from .serializers import FolderSerializer
-from .serializers import FileDetailSerializer
-from .models import File
-from .serializers import FileCreateSerializer, FolderCreateSerializer
-from channels.layers import get_channel_layer
+from rest_framework_simplejwt.views import TokenObtainPairView
 from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 import requests
 import os
 import time
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.db.models import Q 
 
+from .models import Project, Membership, Folder, File
+from .serializers import (
+    UserSerializer, ProjectSerializer, MyTokenObtainPairSerializer,
+    MemberSerializer, FolderSerializer, FileDetailSerializer,
+    FileCreateSerializer, FolderCreateSerializer
+)
+from .permissions import IsProjectOwner
+
+
+# Helper functions
+def send_collaborator_update_signal(project_id, message, removed_user_id=None):
+    """Broadcasts a consistent signal to update the collaborator list on the frontend."""
+    channel_layer = get_channel_layer()
+    payload = {
+        'type': 'collaborator_update',
+        'message': message,
+    }
+    if removed_user_id:
+        payload['removed_user_id'] = removed_user_id
+    
+    async_to_sync(channel_layer.group_send)(f'project_{project_id}', payload)
+
+def send_file_tree_update_signal(project_id, message):
+    """Broadcasts a consistent signal to update the file tree on the frontend."""
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'project_{project_id}',
+        {'type': 'file_tree_update', 'message': message}
+    )
+
+
+# Authentication Views
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+
+
+# Project Views
 class ProjectListCreateView(generics.ListCreateAPIView):
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Project.objects.filter(membership__user=self.request.user).distinct()
+        return Project.objects.filter(
+            membership__user=self.request.user,
+            membership__status=Membership.Status.APPROVED # Only show approved projects
+        ).distinct()
 
     def perform_create(self, serializer):
         project = serializer.save(owner=self.request.user)
-        Membership.objects.create(project=project, user=self.request.user, role=Membership.Role.ADMIN)
+        # Set the owner's status to APPROVED
+        Membership.objects.create(
+            project=project, 
+            user=self.request.user, 
+            role=Membership.Role.ADMIN, 
+            status=Membership.Status.APPROVED
+        )
+
+class ProjectDetailView(generics.RetrieveAPIView):
+    serializer_class = ProjectSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Project.objects.all()
+
+class ProjectTerminateView(generics.DestroyAPIView):
+    queryset = Project.objects.all()
+    serializer_class = ProjectSerializer
+    permission_classes = [IsAuthenticated, IsProjectOwner]
 
 
-class MyTokenObtainPairView(TokenObtainPairView):
-    serializer_class = MyTokenObtainPairSerializer
-
+# Membership Views
 class MemberListView(generics.ListAPIView):
     serializer_class = MemberSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Get the project_id from the URL
         project_id = self.kwargs['project_id']
-        # Return all members for that specific project
-        return Membership.objects.filter(project_id=project_id)
-    
-class FileTreeView(APIView):
+        return Membership.objects.filter(project_id=project_id, status=Membership.Status.APPROVED)
+
+class JoinProjectView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def post(self, request, *args, **kwargs):
+        room_code = request.data.get('room_code')
+        
+        if not room_code:
+            return Response({'error': 'Room code is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            project = Project.objects.get(room_code=room_code)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project with this code does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+        if Membership.objects.filter(project=project, user=request.user).exists():
+            return Response({'error': 'You have already joined or requested to join this project.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        Membership.objects.create(
+            project=project, 
+            user=request.user, 
+            role=Membership.Role.VIEWER,
+            status=Membership.Status.PENDING
+        )
+        
+        # MODIFICATION: Send a more specific signal for the badge
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{project.id}',
+            {'type': 'new_join_request'} # Specific signal type
+        )
+        
+        return Response({'message': 'Your request to join has been sent to the project owner.'}, status=status.HTTP_201_CREATED)
+
+class MembershipDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Membership.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = MemberSerializer
+
+    def update(self, request, *args, **kwargs):
+        membership = self.get_object()
+        project = membership.project
+        if project.owner != request.user:
+            return Response({'error': 'Only the project owner can change roles.'}, status=status.HTTP_403_FORBIDDEN)
+        if membership.user == project.owner:
+            return Response({'error': 'Project owner role cannot be changed.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        response = super().update(request, *args, **kwargs)
+        if response.status_code == 200:
+            send_collaborator_update_signal(project.id, 'A member role has been updated.')
+        return response
+
+    def destroy(self, request, *args, **kwargs):
+        # STEP 1: Get all necessary data BEFORE deleting anything
+        membership = self.get_object()
+        project_id_for_signal = membership.project.id
+        removed_user_id = membership.user.id
+        project_owner = membership.project.owner
+        current_user = request.user
+
+        # STEP 2: Perform all permission checks
+        if not (project_owner == current_user or removed_user_id == current_user.id):
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if project_owner == current_user and removed_user_id == current_user.id:
+            return Response({'error': 'Owner cannot leave the project. Please terminate it instead.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # STEP 3: Now it's safe to delete the object
+        self.perform_destroy(membership)
+
+        # STEP 4: Send the signal using the variables we saved
+        send_collaborator_update_signal(
+            project_id=project_id_for_signal,
+            message='A member has left or been removed.',
+            removed_user_id=removed_user_id
+        )
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class MembershipRequestListView(generics.ListAPIView):
+    """
+    View to list all pending membership requests for a project.
+    Only accessible by the project owner.
+    """
+    serializer_class = MemberSerializer
+    permission_classes = [IsAuthenticated, IsProjectOwner]
+
+    def get_queryset(self):
+        project_id = self.kwargs['project_id']
+        project = generics.get_object_or_404(Project, pk=project_id)
+        # Check if the requester is the owner of the project object itself
+        self.check_object_permissions(self.request, project)
+        return Membership.objects.filter(project=project, status=Membership.Status.PENDING)
+
+class MembershipRequestActionView(APIView):
+    """
+    View to approve or reject a membership request.
+    Only accessible by the project owner.
+    """
+    permission_classes = [IsAuthenticated, IsProjectOwner]
+
+    def post(self, request, *args, **kwargs):
+        membership_id = self.kwargs['membership_id']
+        action = request.data.get('action') # "approve" or "reject"
+
+        membership = generics.get_object_or_404(Membership, pk=membership_id)
+        project = membership.project
+
+        # Check if the user making the request is the owner of the project
+        self.check_object_permissions(self.request, project)
+
+        if action == 'approve':
+            membership.status = Membership.Status.APPROVED
+            membership.save()
+            
+            # NOTIFY THE OWNER'S PAGE TO REFRESH
+            send_collaborator_update_signal(project.id, f"{membership.user.username} has been approved.")
+            
+            # MODIFICATION: NOTIFY THE APPROVED USER'S DASHBOARD
+            project_data = ProjectSerializer(project).data
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'user_{membership.user.id}',
+                {
+                    'type': 'project_approval_notification',
+                    'project': project_data
+                }
+            )
+            return Response({'message': 'Membership approved.'}, status=status.HTTP_200_OK)
+        
+        elif action == 'reject':
+            membership.delete()
+            send_collaborator_update_signal(project.id, f"A join request has been rejected.")
+            return Response({'message': 'Membership rejected and deleted.'}, status=status.HTTP_204_NO_CONTENT)
+        
+        return Response({'error': 'Invalid action.'}, status=status.HTTP_400_BAD_REQUEST)
+
+# File and Folder Views
+class FileTreeView(APIView):
+    permission_classes = [IsAuthenticated]
+    
     def get(self, request, project_id):
         try:
-            # Fetch only top-level folders for the given project
             top_level_folders = Folder.objects.filter(project_id=project_id, parent__isnull=True)
             serializer = FolderSerializer(top_level_folders, many=True)
             return Response(serializer.data)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
-        
-class ProjectDetailView(generics.RetrieveAPIView):
-    serializer_class = ProjectSerializer
+
+class FileCreateView(generics.CreateAPIView):
+    queryset = File.objects.all()
+    serializer_class = FileCreateSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Project.objects.all()
+
+    def perform_create(self, serializer):
+        new_file = serializer.save()
+        send_file_tree_update_signal(new_file.project.id, 'A file has been created.')
 
 class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = FileDetailSerializer
@@ -78,31 +254,7 @@ class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
         project_id = instance.project.id
         instance.delete()
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'project_{project_id}',
-            {'type': 'file_tree_update', 'message': 'A file has been deleted.'}
-        )
-
-class FileCreateView(generics.CreateAPIView):
-    queryset = File.objects.all()
-    serializer_class = FileCreateSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        # First, save the new file object
-        new_file = serializer.save()
-        
-        # Then, send a notification to the project's WebSocket group
-        channel_layer = get_channel_layer()
-        project_id = new_file.project.id
-        async_to_sync(channel_layer.group_send)(
-            f'project_{project_id}',
-            {
-                'type': 'file_tree_update', # This is a new event type
-                'message': 'A file has been updated.'
-            }
-        )
+        send_file_tree_update_signal(project_id, 'A file has been deleted.')
 
 class FolderCreateView(generics.CreateAPIView):
     queryset = Folder.objects.all()
@@ -110,19 +262,8 @@ class FolderCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        # First, save the new folder object
         new_folder = serializer.save()
-        
-        # Then, send a notification to the project's WebSocket group
-        channel_layer = get_channel_layer()
-        project_id = new_folder.project.id
-        async_to_sync(channel_layer.group_send)(
-            f'project_{project_id}',
-            {
-                'type': 'file_tree_update',
-                'message': 'A folder has been updated.'
-            }
-        )
+        send_file_tree_update_signal(new_folder.project.id, 'A folder has been created.')
 
 class FolderDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = FolderSerializer
@@ -132,12 +273,10 @@ class FolderDetailView(generics.RetrieveDestroyAPIView):
     def perform_destroy(self, instance):
         project_id = instance.project.id
         instance.delete()
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'project_{project_id}',
-            {'type': 'file_tree_update', 'message': 'A folder has been deleted.'}
-        )
+        send_file_tree_update_signal(project_id, 'A folder has been deleted.')
 
+
+# Code Execution View
 class CodeExecutionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -189,61 +328,35 @@ class CodeExecutionView(APIView):
         except requests.exceptions.RequestException as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-class JoinProjectView(APIView):
+# dashbord view
+
+class DashboardStatsView(APIView):
+    """
+    Provides statistics for the user's dashboard, such as the total
+    number of unique collaborators across all their projects.
+    """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
-        room_code = request.data.get('room_code')
-        if not room_code:
-            return Response({'error': 'Room code is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            project = Project.objects.get(room_code=room_code)
-        except Project.DoesNotExist:
-            return Response({'error': 'Project with this code does not exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Check if user is already a member
-        if Membership.objects.filter(project=project, user=request.user).exists():
-            return Response({'message': 'You are already a member of this project.'}, status=status.HTTP_200_OK)
-
-        # Add the user to the project with a default 'editor' role
-        membership = Membership.objects.create(project=project, user=request.user, role=Membership.Role.EDITOR)
-
-        # Send real-time signal for collaborator updates
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'project_{project.id}',
-            {
-                'type': 'collaborator_update',
-                'message': 'A new member has joined.'
-            }
-        )
-
-        serializer = ProjectSerializer(project)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
-class MembershipDetailView(generics.DestroyAPIView):
-    queryset = Membership.objects.all()
-    permission_classes = [IsAuthenticated]
-
-    def destroy(self, request, *args, **kwargs):
-        membership = self.get_object()
-        project = membership.project
+    def get(self, request, *args, **kwargs):
         current_user = request.user
 
-        if not (project.owner == current_user or membership.user == current_user):
-            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-        project_id_for_broadcast = project.id
-        self.perform_destroy(membership)
-
-        # Send real-time signal for collaborator updates
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'project_{project_id_for_broadcast}',
-            {
-                'type': 'collaborator_update',
-                'message': 'A member has left or been removed.'
-            }
+        # Find all projects where the current user is an approved member
+        user_projects = Project.objects.filter(
+            membership__user=current_user, 
+            membership__status=Membership.Status.APPROVED
         )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # Get all unique user IDs from the memberships of those projects
+        collaborator_ids = Membership.objects.filter(
+            project__in=user_projects,
+            status=Membership.Status.APPROVED
+        ).values_list('user', flat=True).distinct()
+
+        # The count of collaborators is the number of unique users, minus the current user
+        # We use max(0, ...) to ensure the count is never negative if the user is in a project alone
+        total_collaborators = max(0, collaborator_ids.count() - 1)
+
+        data = {
+            'total_collaborators': total_collaborators
+        }
+        return Response(data)

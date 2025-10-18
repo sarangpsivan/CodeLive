@@ -11,11 +11,15 @@ from .views import FolderDetailView
 from .views import CodeExecutionView
 from .views import JoinProjectView
 from .views import MembershipDetailView
+from .views import ProjectTerminateView
+from .views import MembershipRequestListView, MembershipRequestActionView
+from .views import DashboardStatsView
 
 urlpatterns = [
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('register/', CreateUserView.as_view(), name='register'),
+    path('dashboard-stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('projects/', ProjectListCreateView.as_view(), name='project-list-create'),
     path("projects/<int:project_id>/members/", MemberListView.as_view(), name="member-list"),
     path("projects/<int:project_id>/files/", FileTreeView.as_view(), name="file-tree"),
@@ -27,4 +31,7 @@ urlpatterns = [
     path("execute/", CodeExecutionView.as_view(), name="code-execute"),
     path("projects/join/", JoinProjectView.as_view(), name="project-join"),
     path("memberships/<int:pk>/", MembershipDetailView.as_view(), name="membership-detail"),
+    path("projects/<int:pk>/terminate/", ProjectTerminateView.as_view(), name="project-terminate"),
+    path("projects/<int:project_id>/requests/", MembershipRequestListView.as_view(), name="membership-request-list"),
+    path("requests/<int:membership_id>/action/", MembershipRequestActionView.as_view(), name="membership-request-action"),
 ]

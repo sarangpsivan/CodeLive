@@ -5,8 +5,6 @@ from .models import ChatMessage, Project
 from django.contrib.auth.models import User
 from channels.db import database_sync_to_async
 
-# This will act as a simple in-memory store for active users
-# Note: For production, a Redis-backed solution would be more robust.
 active_users_in_project = {}
 
 class ProjectConsumer(AsyncWebsocketConsumer):
@@ -49,33 +47,27 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
         print(f"WebSocket disconnected from project {self.project_id}")
 
-    # This function receives messages from a user's WebSocket
     async def receive(self, text_data):
         data = json.loads(text_data)
         message_type = data.get('type')
 
-        # Route the message based on its type
         if message_type == 'code_update':
             await self.channel_layer.group_send(
                 self.room_group_name, {'type': 'broadcast_code', 'message': data['message']}
             )
         elif message_type == 'chat_message':
-            # For chat, we need to save the message to the database
-            # and include the user's name in the broadcast.
-            # Note: A real app would get the user from self.scope['user']
-            # but we'll use a placeholder for now.
-
-            # We will add real user handling later. For now, let's use a placeholder.
-            username = "User" # Placeholder
-
-            # Save the chat message
-            # await self.save_chat_message(data['message'], self.scope['user'])
+            # Use actual user information instead of placeholder
+            username = self.user.username
+            
+            # Save the chat message to database
+            await self.save_chat_message(data['message'], self.user)
 
             await self.channel_layer.group_send(
                 self.room_group_name, {
                     'type': 'broadcast_chat_message',
                     'message': data['message'],
-                    'username': username
+                    'username': username,
+                    'user_id': self.user.id
                 }
             )
 
@@ -91,17 +83,41 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'chat_message',
             'message': event['message'],
-            'username': event['username']
+            'username': event['username'],
+            'user_id': event.get('user_id')  # Include user_id for frontend
         }))
 
-    # handler for file tree updates
+    # Handler for file tree updates
     async def file_tree_update(self, event):
         await self.send(text_data=json.dumps({
             'type': 'file_tree_update',
             'message': event['message']
         }))
 
-    # --- New Helper Function ---
+    # --- NEW: Handler for collaborator updates ---
+    async def collaborator_update(self, event):
+        # This handles when members join or leave the project
+        removed_user_id = event.get('removed_user_id')
+        
+        # --- Fix for stale active users list ---
+        if removed_user_id and self.room_group_name in active_users_in_project:
+            # Remove the user from active users if they were kicked/left
+            active_users_in_project[self.room_group_name].discard(removed_user_id)
+            # Broadcast updated presence immediately
+            await self.broadcast_presence()
+        
+        await self.send(text_data=json.dumps({
+            'type': 'collaborator_update',
+            'message': event['message']
+        }))
+
+    # --- NEW: Handler for the new badge notification ---
+    async def new_join_request(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'new_join_request'
+        }))
+
+    # --- Presence Helper Function ---
     async def broadcast_presence(self):
         active_ids = list(active_users_in_project.get(self.room_group_name, set()))
         await self.channel_layer.group_send(
@@ -112,15 +128,44 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             }
         )
     
-    # --- New Handler for Presence ---
+    # --- Handler for Presence Updates ---
     async def presence_update(self, event):
         await self.send(text_data=json.dumps({
             'type': 'presence_update',
             'active_user_ids': event['active_user_ids']
         }))
 
-    # Helper function to save messages to the database
-    # @database_sync_to_async
-    # def save_chat_message(self, message, user):
-    #     project = Project.objects.get(id=self.project_id)
-    #     ChatMessage.objects.create(project=project, user=user, message=message)
+    # --- Fixed: Save chat messages to database ---
+    @database_sync_to_async
+    def save_chat_message(self, message, user):
+        try:
+            project = Project.objects.get(id=self.project_id)
+            ChatMessage.objects.create(project=project, user=user, message=message)
+        except Project.DoesNotExist:
+            print(f"Project {self.project_id} not found")
+        except Exception as e:
+            print(f"Error saving chat message: {e}")
+
+class UserNotificationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # The user object is added to the scope by our TokenAuthMiddleware
+        self.user = self.scope['user']
+
+        if self.user.is_anonymous:
+            await self.close()
+            return
+
+        self.room_group_name = f'user_{self.user.id}'
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        if self.user.is_authenticated:
+            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+    # This handler will be called when a project approval is sent
+    async def project_approval_notification(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'project_approved',
+            'project': event['project']
+        }))
