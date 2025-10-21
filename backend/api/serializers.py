@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Project, Membership, Folder, File
+from .models import Project, Membership, Folder, File, Documentation
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserSerializer(serializers.ModelSerializer):
@@ -87,3 +87,30 @@ class FolderCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Folder
         fields = ['name', 'parent', 'project']
+
+class DocumentationSerializer(serializers.ModelSerializer):
+    last_updated_by_username = serializers.CharField(source='last_updated_by.username', read_only=True, default='N/A')
+    
+    class Meta:
+        model = Documentation
+        fields = ['id', 'project', 'title', 'content', 'last_updated_by', 'last_updated_by_username', 'updated_at']
+        read_only_fields = ['id', 'project', 'last_updated_by', 'last_updated_by_username', 'updated_at'] 
+
+    def create(self, validated_data):
+        validated_data['last_updated_by'] = self.context['request'].user
+        validated_data['project'] = self.context['project'] 
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        instance.title = validated_data.get('title', instance.title) 
+        instance.content = validated_data.get('content', instance.content)
+        instance.last_updated_by = self.context['request'].user
+        instance.save()
+        return instance
+    
+class DocumentationListSerializer(serializers.ModelSerializer):
+    last_updated_by_username = serializers.CharField(source='last_updated_by.username', read_only=True, default='N/A')
+
+    class Meta:
+        model = Documentation
+        fields = ['id', 'title', 'updated_at', 'last_updated_by_username'] 

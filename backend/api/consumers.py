@@ -1,7 +1,7 @@
 # backend/api/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from .models import ChatMessage, Project
+from .models import ChatMessage, Project, Documentation
 from django.contrib.auth.models import User
 from channels.db import database_sync_to_async
 
@@ -94,7 +94,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             'message': event['message']
         }))
 
-    # --- NEW: Handler for collaborator updates ---
+    # --- Handler for collaborator updates ---
     async def collaborator_update(self, event):
         # This handles when members join or leave the project
         removed_user_id = event.get('removed_user_id')
@@ -111,7 +111,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             'message': event['message']
         }))
 
-    # --- NEW: Handler for the new badge notification ---
+    # --- Handler for the new badge notification ---
     async def new_join_request(self, event):
         await self.send(text_data=json.dumps({
             'type': 'new_join_request'
@@ -133,6 +133,28 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'presence_update',
             'active_user_ids': event['active_user_ids']
+        }))
+
+    # --- ADD Handler for doc content updates (after save) ---
+    async def doc_content_update(self, event):
+         # Add the print statement for debugging
+         print(f"CONSUMER: Received doc_content_update from channel layer for doc {event.get('documentId')}. Sending via WebSocket.")
+         # Send update to all clients in the project room
+         # The editor/detail page itself will check if the documentId matches
+         await self.send(text_data=json.dumps({
+            'type': 'doc_content_update',
+            'documentId': event['documentId'],
+            'updater_username': event['updater_username'],
+            'updated_at': event['updated_at'],
+            'title': event.get('title'),
+            'content': event.get('content'),
+        }))
+    # --- END doc content update Handler ---
+
+    async def doc_list_update(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'doc_list_update',
+            'message': event.get('message', 'Document list updated')
         }))
 
     # --- Fixed: Save chat messages to database ---

@@ -13,7 +13,11 @@ from .views import JoinProjectView
 from .views import MembershipDetailView
 from .views import ProjectTerminateView
 from .views import MembershipRequestListView, MembershipRequestActionView
-from .views import DashboardStatsView
+from .views import (
+    DashboardStatsView,
+    DocumentationListCreateView, 
+    DocumentationRetrieveUpdateDestroyView 
+)
 
 urlpatterns = [
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -34,4 +38,6 @@ urlpatterns = [
     path("projects/<int:pk>/terminate/", ProjectTerminateView.as_view(), name="project-terminate"),
     path("projects/<int:project_id>/requests/", MembershipRequestListView.as_view(), name="membership-request-list"),
     path("requests/<int:membership_id>/action/", MembershipRequestActionView.as_view(), name="membership-request-action"),
+    path("projects/<int:project_id>/documentation/", DocumentationListCreateView.as_view(), name="project-documentation-list-create"),
+    path("projects/<int:project_id>/documentation/<int:pk>/", DocumentationRetrieveUpdateDestroyView.as_view(), name="project-documentation-detail"),
 ]

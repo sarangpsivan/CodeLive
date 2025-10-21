@@ -10,11 +10,11 @@ import requests
 import os
 import time
 
-from .models import Project, Membership, Folder, File
+from .models import Project, Membership, Folder, File, Documentation
 from .serializers import (
     UserSerializer, ProjectSerializer, MyTokenObtainPairSerializer,
     MemberSerializer, FolderSerializer, FileDetailSerializer,
-    FileCreateSerializer, FolderCreateSerializer
+    FileCreateSerializer, FolderCreateSerializer, DocumentationSerializer, DocumentationListSerializer
 )
 from .permissions import IsProjectOwner
 
@@ -40,6 +40,29 @@ def send_file_tree_update_signal(project_id, message):
         {'type': 'file_tree_update', 'message': message}
     )
 
+def send_doc_list_update_signal(project_id, message):
+    """Broadcasts a signal to update the document list on the frontend."""
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'project_{project_id}',
+        {'type': 'doc_list_update', 'message': message}
+    )
+
+def send_doc_content_update_signal(project_id, document_id, updated_data):
+    """Broadcasts a signal that specific doc content was updated (after save)."""
+    print(f"VIEW: Attempting to send doc_content_update signal for doc {document_id} in project {project_id}") # Keep this print for debugging
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'project_{project_id}',
+        {
+            'type': 'doc_content_update',
+            'documentId': document_id,
+            'updater_username': updated_data.get('last_updated_by_username', 'N/A'),
+            'updated_at': updated_data.get('updated_at', None).isoformat() if updated_data.get('updated_at') else None,
+            'title': updated_data.get('title'),
+            'content': updated_data.get('content')
+        }
+    )
 
 # Authentication Views
 class CreateUserView(generics.CreateAPIView):
@@ -360,3 +383,86 @@ class DashboardStatsView(APIView):
             'total_collaborators': total_collaborators
         }
         return Response(data)
+    
+#documentation view
+
+class DocumentationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update, or delete a specific documentation page.
+    """
+    serializer_class = DocumentationSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Documentation.objects.all() # We'll filter based on URL kwarg 'pk'
+
+    def get_object(self):
+        # Ensure the requested doc belongs to the project in the URL
+        # and the user is a member of that project.
+        doc = super().get_object()
+        project_id_from_url = self.kwargs['project_id']
+        
+        if doc.project.id != project_id_from_url:
+            raise generics.NotFound() # Doc doesn't belong to this project URL
+
+        # Check membership
+        if not Membership.objects.filter(
+            project_id=project_id_from_url, 
+            user=self.request.user, 
+            status=Membership.Status.APPROVED
+        ).exists():
+            raise generics.PermissionDenied("You are not an approved member of this project.")
+            
+        return doc
+        
+    def perform_update(self, serializer):
+        updated_instance = serializer.save(last_updated_by=self.request.user)
+        print(f"VIEW: Document {updated_instance.id} saved successfully. Preparing signal data.")
+        signal_data = {
+            'last_updated_by_username': updated_instance.last_updated_by.username if updated_instance.last_updated_by else 'N/A',
+            'updated_at': updated_instance.updated_at,
+            'title': updated_instance.title,
+            'content': updated_instance.content
+        }
+        # --- THIS CALL MUST BE PRESENT ---
+        send_doc_content_update_signal(
+            updated_instance.project.id,
+            updated_instance.id,
+            signal_data
+        )
+
+    def perform_destroy(self, instance):
+        project_id = instance.project.id # Get project ID before deleting
+        instance.delete()
+        # Send signal AFTER successful deletion
+        send_doc_list_update_signal(project_id, 'Document deleted.')
+
+class DocumentationListCreateView(generics.ListCreateAPIView):
+    """
+    List all documentation pages for a project or create a new one.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return DocumentationSerializer # Use full serializer for creation
+        return DocumentationListSerializer # Use list serializer for GET
+
+    def get_queryset(self):
+        project_id = self.kwargs['project_id']
+        project = generics.get_object_or_404(Project, pk=project_id)
+        
+        # Check membership
+        if not Membership.objects.filter(project=project, user=self.request.user, status=Membership.Status.APPROVED).exists():
+            raise generics.PermissionDenied("You are not an approved member of this project.")
+            
+        return Documentation.objects.filter(project=project)
+
+    def get_serializer_context(self):
+        # Pass project_id to the serializer context for create
+        context = super().get_serializer_context()
+        context['project'] = generics.get_object_or_404(Project, pk=self.kwargs['project_id'])
+        return context
+
+    def perform_create(self, serializer):
+        new_doc = serializer.save() # Keep track of the new doc
+        # Send signal AFTER successful creation
+        send_doc_list_update_signal(new_doc.project.id, 'New document created.')
