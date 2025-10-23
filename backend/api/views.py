@@ -50,7 +50,7 @@ def send_doc_list_update_signal(project_id, message):
 
 def send_doc_content_update_signal(project_id, document_id, updated_data):
     """Broadcasts a signal that specific doc content was updated (after save)."""
-    print(f"VIEW: Attempting to send doc_content_update signal for doc {document_id} in project {project_id}") # Keep this print for debugging
+    print(f"VIEW: Attempting to send doc_content_update signal for doc {document_id} in project {project_id}") 
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         f'project_{project_id}',
@@ -81,12 +81,11 @@ class ProjectListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return Project.objects.filter(
             membership__user=self.request.user,
-            membership__status=Membership.Status.APPROVED # Only show approved projects
+            membership__status=Membership.Status.APPROVED 
         ).distinct()
 
     def perform_create(self, serializer):
         project = serializer.save(owner=self.request.user)
-        # Set the owner's status to APPROVED
         Membership.objects.create(
             project=project, 
             user=self.request.user, 
@@ -136,11 +135,10 @@ class JoinProjectView(APIView):
             status=Membership.Status.PENDING
         )
         
-        # MODIFICATION: Send a more specific signal for the badge
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f'project_{project.id}',
-            {'type': 'new_join_request'} # Specific signal type
+            {'type': 'new_join_request'}
         )
         
         return Response({'message': 'Your request to join has been sent to the project owner.'}, status=status.HTTP_201_CREATED)
@@ -164,24 +162,20 @@ class MembershipDetailView(generics.RetrieveUpdateDestroyAPIView):
         return response
 
     def destroy(self, request, *args, **kwargs):
-        # STEP 1: Get all necessary data BEFORE deleting anything
         membership = self.get_object()
         project_id_for_signal = membership.project.id
         removed_user_id = membership.user.id
         project_owner = membership.project.owner
         current_user = request.user
 
-        # STEP 2: Perform all permission checks
         if not (project_owner == current_user or removed_user_id == current_user.id):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         if project_owner == current_user and removed_user_id == current_user.id:
             return Response({'error': 'Owner cannot leave the project. Please terminate it instead.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # STEP 3: Now it's safe to delete the object
         self.perform_destroy(membership)
 
-        # STEP 4: Send the signal using the variables we saved
         send_collaborator_update_signal(
             project_id=project_id_for_signal,
             message='A member has left or been removed.',
@@ -201,7 +195,6 @@ class MembershipRequestListView(generics.ListAPIView):
     def get_queryset(self):
         project_id = self.kwargs['project_id']
         project = generics.get_object_or_404(Project, pk=project_id)
-        # Check if the requester is the owner of the project object itself
         self.check_object_permissions(self.request, project)
         return Membership.objects.filter(project=project, status=Membership.Status.PENDING)
 
@@ -214,22 +207,19 @@ class MembershipRequestActionView(APIView):
 
     def post(self, request, *args, **kwargs):
         membership_id = self.kwargs['membership_id']
-        action = request.data.get('action') # "approve" or "reject"
+        action = request.data.get('action')
 
         membership = generics.get_object_or_404(Membership, pk=membership_id)
         project = membership.project
 
-        # Check if the user making the request is the owner of the project
         self.check_object_permissions(self.request, project)
 
         if action == 'approve':
             membership.status = Membership.Status.APPROVED
             membership.save()
             
-            # NOTIFY THE OWNER'S PAGE TO REFRESH
             send_collaborator_update_signal(project.id, f"{membership.user.username} has been approved.")
             
-            # MODIFICATION: NOTIFY THE APPROVED USER'S DASHBOARD
             project_data = ProjectSerializer(project).data
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
@@ -307,7 +297,6 @@ class CodeExecutionView(APIView):
         language = request.data.get('language', 'python')
         code = request.data.get('code', '')
 
-        # Map our language names to Judge0's language IDs
         language_map = {
             "python": 71,
             "javascript": 63,
@@ -318,7 +307,6 @@ class CodeExecutionView(APIView):
         if not language_id:
             return Response({"error": "Unsupported language"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # API request to Judge0 to submit the code
         url = "https://judge0-ce.p.rapidapi.com/submissions"
         payload = {
             "language_id": language_id,
@@ -338,15 +326,14 @@ class CodeExecutionView(APIView):
             if not submission_token:
                 return Response({"error": "Failed to get submission token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # Poll Judge0 for the result
             result_url = f"{url}/{submission_token}"
             while True:
                 result_response = requests.get(result_url, headers=headers)
                 result_response.raise_for_status()
                 result_data = result_response.json()
-                if result_data.get('status', {}).get('id', 0) > 2: # Statuses 1 (In Queue) and 2 (Processing)
+                if result_data.get('status', {}).get('id', 0) > 2: 
                     return Response(result_data)
-                time.sleep(0.2) # Wait 200ms before polling again
+                time.sleep(0.2) 
 
         except requests.exceptions.RequestException as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -354,29 +341,22 @@ class CodeExecutionView(APIView):
 # dashbord view
 
 class DashboardStatsView(APIView):
-    """
-    Provides statistics for the user's dashboard, such as the total
-    number of unique collaborators across all their projects.
-    """
+    
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         current_user = request.user
 
-        # Find all projects where the current user is an approved member
         user_projects = Project.objects.filter(
             membership__user=current_user, 
             membership__status=Membership.Status.APPROVED
         )
 
-        # Get all unique user IDs from the memberships of those projects
         collaborator_ids = Membership.objects.filter(
             project__in=user_projects,
             status=Membership.Status.APPROVED
         ).values_list('user', flat=True).distinct()
 
-        # The count of collaborators is the number of unique users, minus the current user
-        # We use max(0, ...) to ensure the count is never negative if the user is in a project alone
         total_collaborators = max(0, collaborator_ids.count() - 1)
 
         data = {
@@ -392,18 +372,15 @@ class DocumentationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVi
     """
     serializer_class = DocumentationSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Documentation.objects.all() # We'll filter based on URL kwarg 'pk'
+    queryset = Documentation.objects.all() 
 
     def get_object(self):
-        # Ensure the requested doc belongs to the project in the URL
-        # and the user is a member of that project.
         doc = super().get_object()
         project_id_from_url = self.kwargs['project_id']
         
         if doc.project.id != project_id_from_url:
-            raise generics.NotFound() # Doc doesn't belong to this project URL
+            raise generics.NotFound() 
 
-        # Check membership
         if not Membership.objects.filter(
             project_id=project_id_from_url, 
             user=self.request.user, 
@@ -422,7 +399,6 @@ class DocumentationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVi
             'title': updated_instance.title,
             'content': updated_instance.content
         }
-        # --- THIS CALL MUST BE PRESENT ---
         send_doc_content_update_signal(
             updated_instance.project.id,
             updated_instance.id,
@@ -430,9 +406,8 @@ class DocumentationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVi
         )
 
     def perform_destroy(self, instance):
-        project_id = instance.project.id # Get project ID before deleting
+        project_id = instance.project.id 
         instance.delete()
-        # Send signal AFTER successful deletion
         send_doc_list_update_signal(project_id, 'Document deleted.')
 
 class DocumentationListCreateView(generics.ListCreateAPIView):
@@ -443,26 +418,23 @@ class DocumentationListCreateView(generics.ListCreateAPIView):
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
-            return DocumentationSerializer # Use full serializer for creation
-        return DocumentationListSerializer # Use list serializer for GET
+            return DocumentationSerializer 
+        return DocumentationListSerializer 
 
     def get_queryset(self):
         project_id = self.kwargs['project_id']
         project = generics.get_object_or_404(Project, pk=project_id)
         
-        # Check membership
         if not Membership.objects.filter(project=project, user=self.request.user, status=Membership.Status.APPROVED).exists():
             raise generics.PermissionDenied("You are not an approved member of this project.")
             
         return Documentation.objects.filter(project=project)
 
     def get_serializer_context(self):
-        # Pass project_id to the serializer context for create
         context = super().get_serializer_context()
         context['project'] = generics.get_object_or_404(Project, pk=self.kwargs['project_id'])
         return context
 
     def perform_create(self, serializer):
-        new_doc = serializer.save() # Keep track of the new doc
-        # Send signal AFTER successful creation
+        new_doc = serializer.save() 
         send_doc_list_update_signal(new_doc.project.id, 'New document created.')

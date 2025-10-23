@@ -1,3 +1,4 @@
+// conformation modal component
 import React from 'react';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {

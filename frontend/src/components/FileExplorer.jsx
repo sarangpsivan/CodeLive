@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FaChevronRight, FaChevronDown, FaFileCode, FaFileMedical, FaFolderPlus, FaTrash } from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
 
-// --- Reusable Sub-Components ---
+// component for creating new file or folder input
 
 const CreateInput = ({ onConfirm, onCancel, type, depth }) => {
   const [name, setName] = useState('');
@@ -59,7 +59,6 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
   return (
     <div>
       <div className={`group flex items-center justify-between gap-2 px-2 py-1 hover:bg-gray-700 cursor-pointer text-sm rounded ${isSelected ? 'bg-blue-900/50' : ''}`} style={{ paddingLeft: `${depth * 16 + 8}px` }}>
-        {/* The Fix: We've removed the folder icons from this div */}
         <div className="flex items-center gap-2 flex-grow min-w-0" onClick={() => onToggleFolder(folder.id)}>
           {isExpanded ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
           <span className="truncate font-semibold text-white" onClick={handleFolderClick}>{folder.name}</span>
@@ -78,7 +77,7 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
   );
 };
 
-// --- Main FileExplorer Component ---
+// main FileExplorer component
 
 const FileExplorer = ({ projectId, onFileSelect, refreshKey }) => {
   const [fileTree, setFileTree] = useState([]);

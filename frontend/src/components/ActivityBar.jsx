@@ -1,4 +1,4 @@
-// src/components/ActivityBar.jsx
+// vertical activity bar on the left side of the editor page.
 import React from 'react';
 import { FaCode, FaCommentDots, FaBell, FaPlay, FaRegFileCode, FaCog, FaUserCircle } from 'react-icons/fa';
 
@@ -24,7 +24,6 @@ const ActivityBar = ({ activeTab, onTabChange, onRunCode, isRunButtonEnabled, is
                     <FaPlay size={20} />
                 </button>
             </div>
-            {/* Bottom icons (Profile and Settings) - currently placeholders */}
             <div className="flex flex-col items-center gap-4">
                 <button className="p-2 rounded hover:bg-gray-700" title="Profile (Placeholder)">
                     <FaUserCircle size={20} />

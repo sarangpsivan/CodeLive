@@ -1,3 +1,4 @@
+// header bar component for editor page
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -26,7 +27,6 @@ const TopBar = ({ projectId, projectTitle, collaborators = [] }) => {
                 <div className="flex items-center -space-x-2 cursor-pointer group relative">
                     {visibleCollaborators.map((collab, index) => (
                         <div key={index} className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold border-2 border-dark-card">
-                            {/* In a real app, you'd get the name from the collaborator object */}
                             {`U${index + 1}`}
                         </div>
                     ))}

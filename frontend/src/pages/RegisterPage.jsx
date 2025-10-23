@@ -1,5 +1,3 @@
-// src/pages/RegisterPage.jsx
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaGithub, FaGoogle } from 'react-icons/fa';
@@ -49,7 +47,6 @@ const RegisterPage = () => {
                     <p className="text-center text-gray-400 mb-6">Get started with CodeLive today</p>
                     
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Updated with flexbox alignment classes */}
                         <a href="http://localhost:8000/accounts/github/login/" className="flex items-center justify-center py-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition">
                             <FaGithub className="mr-2" /> GitHub
                         </a>

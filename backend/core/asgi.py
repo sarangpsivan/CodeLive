@@ -1,7 +1,7 @@
 import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
-from api.middleware import TokenAuthMiddleware # our custom middleware
+from api.middleware import TokenAuthMiddleware
 import api.routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')

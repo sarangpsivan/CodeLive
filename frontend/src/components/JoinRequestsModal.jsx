@@ -1,3 +1,4 @@
+// pop-up window to manage join requests for a project for the project owner
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { FaCheck, FaTimes } from 'react-icons/fa';
@@ -21,9 +22,7 @@ const JoinRequestsModal = ({ isOpen, onClose, projectId, onActionComplete }) => 
     const handleAction = async (membershipId, action) => {
         try {
             await axiosInstance.post(`/api/requests/${membershipId}/action/`, { action });
-            // Remove the handled request from the list
             setRequests(prev => prev.filter(req => req.id !== membershipId));
-            // Notify the parent page to refresh its data
             onActionComplete();
         } catch (error) {
             console.error(`Failed to ${action} request`, error);

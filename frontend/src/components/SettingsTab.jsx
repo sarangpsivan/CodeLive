@@ -1,30 +1,28 @@
+// settings tab component
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import AuthContext from '../context/AuthContext';
 import { FaSignOutAlt, FaTrash, FaExchangeAlt } from 'react-icons/fa';
-import ConfirmationModal from './ConfirmationModal'; // 1. Import the new modal
+import ConfirmationModal from './ConfirmationModal';
 
 const SettingsTab = ({ projectId, isOwner, members, onActionComplete }) => {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const [activeSubTab, setActiveSubTab] = useState('editors');
-
-    // 2. Add state to manage the confirmation modal
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
-
     const editors = members.filter(m => m.role === 'EDITOR');
     const viewers = members.filter(m => m.role === 'VIEWER');
 
     const performAction = async (action) => {
         try {
             await action();
-            onActionComplete(); // Refresh parent data
+            onActionComplete();
         } catch (error) {
             console.error("Action failed:", error);
             alert("An error occurred. Please try again.");
         }
-        setConfirmModal({ isOpen: false }); // Close modal on completion
+        setConfirmModal({ isOpen: false });
     };
 
     const handleTerminateProject = () => {
@@ -67,7 +65,7 @@ const SettingsTab = ({ projectId, isOwner, members, onActionComplete }) => {
     const handleChangeRole = async (member, newRole) => {
         try {
             await axiosInstance.patch(`/api/memberships/${member.id}/`, { role: newRole });
-            onActionComplete(); // Refresh the parent component
+            onActionComplete();
         } catch (error) {
             alert("Error changing role.");
         }
@@ -76,13 +74,11 @@ const SettingsTab = ({ projectId, isOwner, members, onActionComplete }) => {
     const renderMemberList = (list, newRole) => (
         list.length > 0 ? list.map(member => (
             <div key={member.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                {/* MODIFICATION: Display name and email */}
                 <div>
                     <p className="font-semibold">{member.first_name || member.email}</p>
                     {member.first_name && <p className="text-sm text-gray-400">{member.email}</p>}
                 </div>
                 
-                {/* MODIFICATION 2: Only show these buttons if the user is the owner */}
                 {isOwner && (
                     <div className="flex gap-2">
                         <button 
@@ -107,7 +103,6 @@ const SettingsTab = ({ projectId, isOwner, members, onActionComplete }) => {
 
     return (
         <>
-            {/* 3. Render the confirmation modal */}
             <ConfirmationModal 
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ isOpen: false })}
@@ -117,9 +112,7 @@ const SettingsTab = ({ projectId, isOwner, members, onActionComplete }) => {
             />
             
             <div className="space-y-8">
-                {/* Member Management Section */}
                 <div>
-                    {/* MODIFICATION 1: Rename the section heading */}
                     <h3 className="text-2xl font-bold mb-4">Member Roles</h3>
                     <div className="bg-[var(--dark-card)] p-6 rounded-xl border border-gray-800">
                         <div className="flex border-b border-gray-700 mb-4">
@@ -143,7 +136,6 @@ const SettingsTab = ({ projectId, isOwner, members, onActionComplete }) => {
                     </div>
                 </div>
 
-                {/* Project Danger Zone */}
                 <div>
                     <h3 className="text-2xl font-bold mb-4 text-red-500">Danger Zone</h3>
                     <div className="bg-[var(--dark-card)] p-6 rounded-xl border border-red-800/50 space-y-4">

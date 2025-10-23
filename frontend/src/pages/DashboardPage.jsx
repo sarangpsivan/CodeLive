@@ -44,13 +44,13 @@ const DashboardPage = () => {
 
             const currentAuthTokens = localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null;
 
-            if (!currentAuthTokens || !user) { // Check user from context
+            if (!currentAuthTokens || !user) {
                 console.log("WebSocket connection skipped (Dashboard): Not logged in.");
                 return;
             }
 
              try {
-                jwtDecode(currentAuthTokens.access); // Check if token is decodable
+                jwtDecode(currentAuthTokens.access);
             } catch (error) {
                 console.error("WebSocket connection skipped (Dashboard): Invalid token.");
                 return;
@@ -85,17 +85,16 @@ const DashboardPage = () => {
             };
         };
 
-        connectWebSocket(); // Initial connect
+        connectWebSocket(); 
 
-        return () => { // Cleanup
+        return () => { 
             if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
             if (socket) {
                 console.log("Closing WebSocket connection (Dashboard) due to cleanup.");
                 socket.close(1000);
             }
         };
-    // Simplify dependency array
-    }, [user?.user_id]); // Depend only on user ID
+    }, [user?.user_id]); 
 
     const handleProjectCreated = (newProject) => {
         setProjects(prev => [...prev, newProject]);

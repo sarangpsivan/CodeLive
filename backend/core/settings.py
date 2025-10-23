@@ -146,22 +146,21 @@ REST_FRAMEWORK = {
     )
 }
 
-# This tells Django to use allauth's authentication system
+# tells Django to use allauth's authentication system
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-# This is required by the headless library for local development
+# Used by the headless library for local development
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
 
-# UPDATED: Allauth settings using new configuration format
-ACCOUNT_LOGIN_METHODS = {'email'}  # Replaces ACCOUNT_AUTHENTICATION_METHOD
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']  # Replaces ACCOUNT_EMAIL_REQUIRED and ACCOUNT_USERNAME_REQUIRED
+# Allauth settings
+ACCOUNT_LOGIN_METHODS = {'email'} 
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 
-# This tells allauth to immediately redirect to Google/GitHub
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # Social Provider specific settings
@@ -176,8 +175,7 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-# This is the new setting for the headless library.
-# It tells the backend where to redirect on the frontend after a social login.
+# tells the backend where to redirect on the frontend after a social login.
 ALLAUTH_HEADLESS_CLIENT_URLS = {
     "google": "http://localhost:5173/social-auth-callback",
     "github": "http://localhost:5173/social-auth-callback",
@@ -189,7 +187,7 @@ REST_AUTH = {
     'JWT_AUTH_HTTPONLY': False,
 }
 
-# --- ADDED: JWT configuration ---
+# JWT configuration
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
@@ -221,7 +219,6 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
-# --- END of JWT block ---
 
 # ASGI application definition to tell Django to use Channels
 ASGI_APPLICATION = "core.asgi.application"

@@ -1,3 +1,4 @@
+// pop-up modal to invite collaborators via code or link
 import React, { useState } from 'react';
 
 const InviteModal = ({ isOpen, onClose, project }) => {

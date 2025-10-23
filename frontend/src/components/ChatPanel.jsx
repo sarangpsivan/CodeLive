@@ -1,3 +1,4 @@
+// chat panel component for displaying messages and sending new ones.
 import React, { useState, useEffect, useRef } from 'react';
 import { FaPaperPlane } from 'react-icons/fa';
 
@@ -27,7 +28,6 @@ const ChatPanel = ({ messages, onSendMessage }) => {
                 <h2 className="font-bold text-white">Chat</h2>
             </div>
 
-            {/* Message display area */}
             <div className="flex-grow p-4 overflow-y-auto">
                 {messages.map((msg, index) => (
                     <div key={index} className="mb-4">
@@ -38,7 +38,6 @@ const ChatPanel = ({ messages, onSendMessage }) => {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input form is now correctly at the bottom */}
             <div className="p-4 border-t border-gray-800">
                 <form onSubmit={handleSubmit} className="flex gap-2">
                     <input

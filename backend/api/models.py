@@ -2,18 +2,15 @@ from django.db import models
 from django.contrib.auth.models import User
 import uuid
 
-# Model to store each coding project/workspace
 class Project(models.Model):
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="owned_projects")
     created_at = models.DateTimeField(auto_now_add=True)
-    # 2. Add the new room_code field
     room_code = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
         return self.name
 
-# Model to manage which users are members of which projects
 class Membership(models.Model):
 
     class Status(models.TextChoices):

@@ -7,7 +7,7 @@ import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import AuthContext from '../context/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 
-// Custom styles (same as before)
+// Custom styles for Quill editor
 const quillStyle = `
   body { background-color: #111827; } /* gray-900 for the whole page */
   .ql-toolbar {
@@ -50,20 +50,16 @@ const DocumentationEditorPage = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [projectName, setProjectName] = useState('');
 
-    // WebSocket Refs
     const socketRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
 
-    // Fetch project name and specific document
     useEffect(() => {
         setStatus('Loading...');
         
-        // Fetch project name
         axiosInstance.get(`/api/projects/${projectId}/`)
             .then(res => setProjectName(res.data.name))
             .catch(err => console.error("Failed to fetch project name", err));
 
-        // Fetch document by ID
         axiosInstance.get(`/api/projects/${projectId}/documentation/${documentId}/`)
             .then(res => {
                 setTitle(res.data.title);
@@ -82,7 +78,6 @@ const DocumentationEditorPage = () => {
             });
     }, [projectId, documentId, navigate]);
 
-    // --- Enhanced WebSocket useEffect ---
     useEffect(() => {
         const connectWebSocket = () => {
             if (reconnectTimeoutRef.current) {
@@ -90,7 +85,6 @@ const DocumentationEditorPage = () => {
                 reconnectTimeoutRef.current = null;
             }
             
-            // Use current authTokens from context or localStorage as fallback
             const currentAuthTokens = authTokens || (localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null);
             
             if (!currentAuthTokens?.access) {
@@ -99,14 +93,13 @@ const DocumentationEditorPage = () => {
             }
             
             try {
-                jwtDecode(currentAuthTokens.access); // Validate token structure
+                jwtDecode(currentAuthTokens.access);
             } catch (error) {
                 console.error("WebSocket connection skipped (Docs): Invalid token.");
                 return;
             }
 
             console.log("Attempting WebSocket connection (Docs)...");
-            // Connect to the project's WebSocket endpoint
             const wsUrl = `ws://localhost:8000/ws/project/${projectId}/?token=${currentAuthTokens.access}`;
             socketRef.current = new WebSocket(wsUrl);
 
@@ -116,37 +109,25 @@ const DocumentationEditorPage = () => {
 
             socketRef.current.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                console.log("DocEditor WS Message Received:", data); // Log ALL messages
+                console.log("DocEditor WS Message Received:", data);
 
-                // --- Refined Handling for doc_content_update ---
                 if (data.type === 'doc_content_update' && data.documentId === parseInt(documentId)) {
                     console.log(`DocEditor received remote save update for THIS document (ID: ${data.documentId})`);
 
-                    // --- CRITICAL: Reset initial state along with current state ---
-                    // This prevents the editor immediately showing "Unsaved changes"
-                    // after receiving a remote update.
                     setContent(data.content);
                     setTitle(data.title);
-                    setInitialContent(data.content); // Reset baseline
-                    setInitialTitle(data.title);     // Reset baseline
-
-                    // Update display info
+                    setInitialContent(data.content); 
+                    setInitialTitle(data.title); 
                     setLastUpdatedBy(data.updater_username);
                     setLastUpdatedAt(new Date(data.updated_at).toLocaleString());
 
-                    // Update status - indicate it was saved remotely
-                    // Use a slightly different status to make it clear
                     setStatus(`Synced: ${new Date(data.updated_at).toLocaleTimeString()}`);
-                    // Optional: Revert status back after a delay
                     setTimeout(() => {
-                         // Only revert if status hasn't changed again (e.g., user started typing)
                          setStatus(prevStatus => prevStatus.startsWith('Synced:') ? 'Saved' : prevStatus);
                      }, 2000);
                 } else if (data.type === 'doc_content_update') {
-                    // Log if update is for a *different* document (shouldn't happen often here)
                     console.log(`DocEditor received remote save update for DIFFERENT document (ID: ${data.documentId})`);
                 }
-                // --- END Refined Handling ---
             };
 
             socketRef.current.onerror = (error) => {
@@ -155,11 +136,10 @@ const DocumentationEditorPage = () => {
 
             socketRef.current.onclose = (event) => {
                 console.log("WebSocket connection closed (Docs).", event.code, event.reason);
-                socketRef.current = null; // Clear the ref
+                socketRef.current = null;
                 
-                // Use latest tokens from localStorage for reconnect logic
                 const latestTokens = localStorage.getItem('authTokens');
-                if (event.code !== 1000 && latestTokens) { // Don't reconnect on clean close or if logged out
+                if (event.code !== 1000 && latestTokens) {
                     console.log("Attempting WebSocket reconnect (Docs) in 5 seconds...");
                     reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
                 } else {
@@ -168,23 +148,20 @@ const DocumentationEditorPage = () => {
             };
         };
 
-        connectWebSocket(); // Initial connection attempt
+        connectWebSocket();
 
-        // Cleanup function
         return () => {
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
             }
             if (socketRef.current) {
                 console.log("Closing WebSocket connection (Docs) due to cleanup.");
-                socketRef.current.close(1000); // Clean close
+                socketRef.current.close(1000);
                 socketRef.current = null;
             }
         };
-    }, [projectId, authTokens, documentId]); // Keep dependencies
-    // --- END Enhanced WebSocket useEffect ---
+    }, [projectId, authTokens, documentId]);
 
-    // Handle Save
     const handleSave = useCallback(async () => {
         setIsSaving(true);
         setStatus('Saving...');
@@ -206,10 +183,8 @@ const DocumentationEditorPage = () => {
         }
     }, [projectId, documentId, title, content]);
 
-    // Handle Content Change
     const handleContentChange = (newContent) => {
         setContent(newContent);
-        // Only update status based on comparison
         if ((newContent !== initialContent || title !== initialTitle) && status !== 'Unsaved changes') {
             setStatus('Unsaved changes');
         } else if (newContent === initialContent && title === initialTitle && status === 'Unsaved changes') {
@@ -217,11 +192,9 @@ const DocumentationEditorPage = () => {
         }
     };
 
-    // Handle Title Change
     const handleTitleChange = (event) => {
         const newTitle = event.target.value;
         setTitle(newTitle);
-        // Only update status based on comparison
         if ((content !== initialContent || newTitle !== initialTitle) && status !== 'Unsaved changes') {
             setStatus('Unsaved changes');
         } else if (content === initialContent && newTitle === initialTitle && status === 'Unsaved changes') {
@@ -245,7 +218,6 @@ const DocumentationEditorPage = () => {
         <div className="min-h-screen bg-gray-900 text-white p-6 font-sans">
             <style>{quillStyle}</style>
 
-            {/* Header section */}
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
                 <div>
                     <button
@@ -254,7 +226,6 @@ const DocumentationEditorPage = () => {
                     >
                         <FaArrowLeft /> Back to Project Hub
                     </button>
-                    {/* Input for Title */}
                     <input 
                         type="text"
                         value={title}

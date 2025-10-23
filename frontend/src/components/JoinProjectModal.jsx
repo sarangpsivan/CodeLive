@@ -1,3 +1,4 @@
+// pop-up modal to join a project via room code
 import React, { useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 
@@ -7,7 +8,6 @@ const JoinProjectModal = ({ isOpen, onClose }) => {
     const [successMessage, setSuccessMessage] = useState('');
 
     const handleClose = () => {
-        // Reset state when closing the modal
         setRoomCode('');
         setError('');
         setSuccessMessage('');

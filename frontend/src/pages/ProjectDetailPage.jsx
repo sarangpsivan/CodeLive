@@ -10,7 +10,6 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import AuthContext from '../context/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 
-// Helper function for relative time
 function timeAgo(dateString) {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
@@ -40,10 +39,8 @@ const ProjectDetailPage = () => {
     const { user, authTokens } = useContext(AuthContext);
     const navigate = useNavigate();
     
-    // Updated state for documents list
     const [documents, setDocuments] = useState([]);
     const [docsLoading, setDocsLoading] = useState(true);
-    // State for delete confirmation modal
     const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, docId: null, docTitle: '' });
 
     const isOwner = project && user && project.owner === user.user_id;
@@ -61,7 +58,6 @@ const ProjectDetailPage = () => {
             .then(res => setMembers(res.data))
             .catch(err => console.error("Failed to fetch members:", err));
 
-        // Fetch document list
         setDocsLoading(true);
         axiosInstance.get(`/api/projects/${projectId}/documentation/`)
             .then(res => {
@@ -91,7 +87,6 @@ const ProjectDetailPage = () => {
                 reconnectTimeoutId = null;
             }
 
-            // Read the LATEST tokens from localStorage
             const currentAuthTokens = localStorage.getItem('authTokens')
                 ? JSON.parse(localStorage.getItem('authTokens'))
                 : null;
@@ -113,7 +108,7 @@ const ProjectDetailPage = () => {
 
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                console.log("ProjectDetail WS Message Received:", data); // Log ALL messages
+                console.log("ProjectDetail WS Message Received:", data); 
                 
                 if (data.type === 'presence_update') {
                     setActiveMembers(data.active_user_ids);
@@ -142,37 +137,30 @@ const ProjectDetailPage = () => {
                     setRequestCount(prev => prev + 1);
                 }
 
-                // --- Handling for doc_list_update ---
                 if (data.type === 'doc_list_update') {
                     console.log("Received doc_list_update signal, refreshing data...");
-                    fetchData(); // Call the existing function to refresh everything
+                    fetchData();
                 }
-                // --- END Handling ---
-
-                // --- Enhanced Handling for doc_content_update ---
+                
                 if (data.type === 'doc_content_update') {
-                    console.log(`ProjectDetail received doc_content_update for docId: ${data.documentId}`); // Specific log
+                    console.log(`ProjectDetail received doc_content_update for docId: ${data.documentId}`); 
                     setDocuments(prevDocs => {
                         console.log("ProjectDetail updating documents state...");
                         const updatedDocs = prevDocs.map(doc => {
                             if (doc.id === data.documentId) {
                                 console.log(`ProjectDetail found matching doc: ${doc.id}, updating title to: ${data.title}`);
                                 return {
-                                      ...doc, // Keep existing fields
-                                      title: data.title ?? doc.title, // Use nullish coalescing
-                                      updated_at: data.updated_at, // Update timestamp
-                                      last_updated_by_username: data.updater_username // Update user
+                                      ...doc,
+                                      title: data.title ?? doc.title,
+                                      updated_at: data.updated_at, 
+                                      last_updated_by_username: data.updater_username
                                   };
                             }
                             return doc;
                         });
-                        // Log state before and after update for debugging
-                        // console.log("Previous docs state:", prevDocs);
-                        // console.log("New docs state:", updatedDocs);
                         return updatedDocs;
                     });
                 }
-                // --- END Enhanced Handling ---
             };
 
             socket.onerror = (error) => {
@@ -209,14 +197,12 @@ const ProjectDetailPage = () => {
         };
     }, [projectId, user?.user_id, navigate]);
 
-    // Function to handle creating a new document
     const handleNewDocument = async () => {
         try {
             const response = await axiosInstance.post(`/api/projects/${projectId}/documentation/`, {
-                title: "New Document", // Default title
+                title: "New Document", 
                 content: "" 
             });
-            // Navigate to the new document's editor page
             navigate(`/project/${projectId}/documentation/${response.data.id}`);
         } catch (error) {
             console.error("Failed to create new document:", error);
@@ -224,24 +210,22 @@ const ProjectDetailPage = () => {
         }
     };
 
-    // Function to trigger delete confirmation
     const handleDeleteClick = (docId, docTitle) => {
         setConfirmDeleteModal({ isOpen: true, docId, docTitle });
     };
 
-    // Function to perform deletion
     const confirmDeleteDocument = async () => {
         const docIdToDelete = confirmDeleteModal.docId;
         if (!docIdToDelete) return;
 
         try {
             await axiosInstance.delete(`/api/projects/${projectId}/documentation/${docIdToDelete}/`);
-            setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== docIdToDelete)); // Update list locally
-            setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' }); // Close modal
+            setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== docIdToDelete));
+            setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' });
         } catch (error) {
             console.error("Failed to delete document:", error);
             alert("Could not delete the document. Please try again.");
-            setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' }); // Close modal even on error
+            setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' }); 
         }
     };
 
@@ -264,7 +248,6 @@ const ProjectDetailPage = () => {
                 onActionComplete={fetchData}
             />
 
-            {/* Add Delete Confirmation Modal */}
             <ConfirmationModal
                 isOpen={confirmDeleteModal.isOpen}
                 onClose={() => setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' })}
@@ -352,7 +335,6 @@ const ProjectDetailPage = () => {
                         />
                     )}
                     
-                    {/* UPDATED DOCUMENTATION TAB */}
                     {activeTab === 'documentation' && (
                         <div>
                             <div className="flex justify-between items-center mb-6">
@@ -381,13 +363,11 @@ const ProjectDetailPage = () => {
                                                 <FaFileAlt className="text-xl text-[var(--accent-blue)] flex-shrink-0" />
                                                 <div className="min-w-0">
                                                     <p className="font-semibold text-white text-lg truncate">{doc.title}</p>
-                                                    {/* This part will now update in real-time */}
                                                     <p className="text-sm text-gray-400">
                                                         Updated {timeAgo(doc.updated_at)} by {doc.last_updated_by_username}
                                                     </p>
                                                 </div>
                                             </Link>
-                                            {/* Delete button */}
                                             <button
                                                 onClick={() => handleDeleteClick(doc.id, doc.title)}
                                                 className="ml-4 p-2 text-gray-500 hover:text-red-500 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
@@ -403,7 +383,6 @@ const ProjectDetailPage = () => {
                             )}
                         </div>
                     )}
-                    {/* END OF UPDATED TAB */}
                     
                     {activeTab === 'settings' && (
                         <SettingsTab 

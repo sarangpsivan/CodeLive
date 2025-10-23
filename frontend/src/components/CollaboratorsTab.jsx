@@ -1,3 +1,4 @@
+// component to display and invite collaborators in a project.
 import React from 'react';
 import { FaCrown, FaUserPlus } from 'react-icons/fa';
 

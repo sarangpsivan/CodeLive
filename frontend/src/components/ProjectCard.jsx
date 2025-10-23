@@ -1,4 +1,4 @@
-// src/components/ProjectCard.jsx
+// Project card component displaying project list and navigation link to project details
 import React from 'react';
 import { FaFolder } from 'react-icons/fa';
 import { Link } from 'react-router-dom';

@@ -9,8 +9,6 @@ import axiosInstance from '../utils/axiosInstance';
 import { FaTimes, FaSync, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
 import AuthContext from '../context/AuthContext';
 
-// --- Reusable Panel Components ---
-
 const PreviewPanel = ({ htmlCode, onClose }) => {
     const iframeRef = useRef(null);
     const reloadIframe = () => { 
@@ -128,7 +126,6 @@ const EditorPage = () => {
             .then(res => setProject(res.data))
             .catch(err => console.error("Failed to fetch project details", err));
 
-        // Establish WebSocket connection with authentication
         if (authTokens) {
             const socket = new WebSocket(
                 `ws://localhost:8000/ws/project/${projectId}/?token=${authTokens.access}`
