@@ -44,8 +44,12 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
         if message_type == 'code_update':
             await self.channel_layer.group_send(
-                self.room_group_name, {'type': 'broadcast_code', 'message': data['message']}
-            )
+                self.room_group_name, {
+                'type': 'broadcast_code', 
+                'message': data['message'],
+                'fileId': data.get('fileId')
+            }
+        )
         elif message_type == 'chat_message':
             username = self.user.username
             
@@ -64,7 +68,8 @@ class ProjectConsumer(AsyncWebsocketConsumer):
     async def broadcast_code(self, event):
         await self.send(text_data=json.dumps({
             'type': 'code_update',
-            'message': event['message']
+            'message': event['message'],
+            'fileId': event.get('fileId')
         }))
 
     # Handler for broadcasting chat messages

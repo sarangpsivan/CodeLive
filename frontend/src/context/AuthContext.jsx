@@ -1,10 +1,9 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useMemo } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 
 const AuthContext = createContext();
-
 export default AuthContext;
 
 export const AuthProvider = ({ children }) => {
@@ -15,7 +14,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.getItem('authTokens') ? jwtDecode(localStorage.getItem('authTokens')) : null
     );
     const [loading, setLoading] = useState(true);
-
     const navigate = useNavigate();
 
     const loginUser = async (email, password) => {
@@ -78,19 +76,19 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const contextData = {
+    const contextData = useMemo(() => ({
         user,
         authTokens,
         loginUser,
         logoutUser,
         setUserAndTokens,
-        setAuthTokensDirectly: setAuthTokens, 
+        setAuthTokensDirectly: setAuthTokens,
         setUserDirectly: setUser,
-    };
+    }), [user, authTokens]);
 
     return (
         <AuthContext.Provider value={contextData}>
-            {!loading ? children : <div>Loading...</div> }
+            {!loading ? children : <div>Loading...</div>}
         </AuthContext.Provider>
     );
 };

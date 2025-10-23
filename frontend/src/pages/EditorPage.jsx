@@ -135,16 +135,25 @@ const EditorPage = () => {
             socket.onopen = () => console.log("WebSocket connection established");
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                
                 if (data.type === 'code_update') {
-                    setOpenFiles(prevFiles => prevFiles.map(f =>
-                        f.id === activeFileId ? { ...f, content: data.message } : f
-                    ));
-                }
-                else if (data.type === 'chat_message') { 
-                    setMessages(prev => [...prev, data]); 
-                }
-                else if (data.type === 'file_tree_update') { 
-                    setExplorerRefreshKey(prev => prev + 1); 
+                    setOpenFiles(prevOpenFiles => {
+                        const isFileOpen = prevOpenFiles.some(f => f.id === data.fileId);
+                        
+                        if (isFileOpen) {
+                            return prevOpenFiles.map(f =>
+                                f.id === data.fileId ? { ...f, content: data.message } : f
+                            );
+                        }
+                        
+                        return prevOpenFiles;
+                    });
+                } 
+                else if (data.type === 'chat_message') {
+                    setMessages(prevMessages => [...prevMessages, data]); 
+                } 
+                else if (data.type === 'file_tree_update') {
+                    setExplorerRefreshKey(prevKey => prevKey + 1);
                 }
             };
 
@@ -152,7 +161,7 @@ const EditorPage = () => {
 
             return () => socket.close();
         }
-    }, [projectId, activeFileId, authTokens]);
+    }, [projectId, authTokens]);
 
     const getLanguageFromFile = (fileName) => {
         const extension = fileName.split('.').pop();
@@ -183,7 +192,9 @@ const EditorPage = () => {
                 };
                 setOpenFiles(prev => [...prev, newFile]);
                 setActiveFileId(newFile.id);
-            }).catch(err => console.error("Failed to load file content", err));
+            }).catch(err => {
+                console.error("Failed to load file content", err);
+            });
         }
     };
 
@@ -211,18 +222,23 @@ const EditorPage = () => {
             );
             
             if (socketRef.current?.readyState === WebSocket.OPEN) {
-                socketRef.current.send(JSON.stringify({ 'type': 'code_update', 'message': value }));
+                socketRef.current.send(JSON.stringify({ 
+                    'type': 'code_update', 
+                    'message': value,
+                    'fileId': activeFileId
+                }));
             }
 
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+            const valueToSave = value;
+            const fileIdToSave = activeFileId;
+
             saveTimeoutRef.current = setTimeout(() => {
-                if (activeFileId) {
-                    const fileToSave = openFiles.find(f => f.id === activeFileId);
-                    if (fileToSave) {
-                        axiosInstance.put(`/api/files/${fileToSave.id}/`, { ...fileToSave, content: value })
-                            .then(res => console.log("File saved successfully!"))
-                            .catch(err => console.error("Failed to save file", err));
-                    }
+                if (fileIdToSave) { 
+                    axiosInstance.patch(`/api/files/${fileIdToSave}/`, { content: valueToSave })
+                        .then(res => console.log("File saved successfully!"))
+                        .catch(err => console.error("Failed to save file", err));
                 }
             }, 2000);
         }
@@ -329,18 +345,24 @@ const EditorPage = () => {
                     </div>
 
                     <div className="flex-grow flex flex-row">
-                        <div className={sidePanel ? "w-1/2" : "w-full"}>
-                            <Editor
-                                height="100%"
-                                theme="vs-dark"
-                                language={activeFile?.language || 'plaintext'}
-                                value={activeFile?.content || '# Select a file from the explorer'}
-                                onChange={handleEditorChange}
-                                options={{ 
-                                    readOnly: !activeFileId, 
-                                    minimap: { enabled: false } 
-                                }}
-                            />
+                        <div className={sidePanel ? "w-1/2 h-full" : "w-full h-full"}>
+                            {activeFile ? (
+                                <Editor
+                                    height="100%"
+                                    theme="vs-dark"
+                                    language={activeFile.language}
+                                    value={activeFile.content ?? ''}
+                                    onChange={handleEditorChange}
+                                    options={{
+                                        readOnly: false,
+                                        minimap: { enabled: false }
+                                    }}
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full bg-[#1E1E1E] text-gray-500 italic px-4">
+                                    # Select a file from the explorer
+                                </div>
+                            )}
                         </div>
                         {sidePanel && (
                             <div className="w-1/2 border-l-2 border-gray-700">
