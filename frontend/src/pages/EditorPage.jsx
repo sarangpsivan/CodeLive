@@ -6,13 +6,14 @@ import ActivityBar from '../components/ActivityBar';
 import FileExplorer from '../components/FileExplorer';
 import ChatPanel from '../components/ChatPanel';
 import axiosInstance from '../utils/axiosInstance';
-import { FaTimes, FaSync, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
+import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical } from 'react-icons/vsc';
 import AuthContext from '../context/AuthContext';
 
 const PreviewPanel = ({ htmlCode, onClose }) => {
     const iframeRef = useRef(null);
-    const reloadIframe = () => { 
-        if (iframeRef.current) iframeRef.current.srcdoc = htmlCode; 
+
+    const reloadIframe = () => {
+        if (iframeRef.current) iframeRef.current.srcdoc = htmlCode;
     };
 
     const openInNewTab = () => {
@@ -26,16 +27,32 @@ const PreviewPanel = ({ htmlCode, onClose }) => {
         <div className="h-full w-full flex flex-col bg-dark-card">
             <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-2 border-b border-gray-700">
                 <div className="flex items-center gap-2">
-                    <button onClick={reloadIframe} title="Refresh" className="text-gray-400 hover:text-white"><FaSync size={14} /></button>
-                    <div className="bg-dark-bg text-gray-300 text-xs px-2 py-1 rounded w-64 truncate">https://preview.codelive.app</div>
+                    <button onClick={reloadIframe} title="Refresh" className="text-gray-400 hover:text-white">
+                        <VscRefresh size={14} />
+                    </button>
+                    <div className="bg-dark-bg text-gray-300 text-xs px-2 py-1 rounded w-64 truncate">
+                        https://preview.codelive.app
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={openInNewTab} title="Open in new tab" className="text-gray-400 hover:text-white"><FaExternalLinkAlt size={14} /></button>
-                    <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white"><FaTimes size={16} /></button>
+                    <button onClick={openInNewTab} title="Open in new tab" className="text-gray-400 hover:text-white">
+                        <VscLinkExternal size={14} />
+                    </button>
+                    <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white">
+                        <VscClose size={16} />
+                    </button>
                 </div>
             </div>
             <div className="flex-grow bg-white">
-                <iframe ref={iframeRef} srcDoc={htmlCode} title="Live Preview" sandbox="allow-scripts" width="100%" height="100%" style={{ border: 'none' }}/>
+                <iframe 
+                    ref={iframeRef} 
+                    srcDoc={htmlCode} 
+                    title="Live Preview" 
+                    sandbox="allow-scripts" 
+                    width="100%" 
+                    height="100%" 
+                    style={{ border: 'none' }}
+                />
             </div>
         </div>
     );
@@ -45,7 +62,9 @@ const OutputPanel = ({ output, onClose }) => (
     <div className="h-full w-full flex flex-col bg-dark-card">
         <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-4 border-b border-gray-700">
             <h3 className="text-sm font-semibold">Output</h3>
-            <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white"><FaTimes size={16} /></button>
+            <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white">
+                <VscClose size={16} />
+            </button>
         </div>
         <div className="flex-grow overflow-y-auto p-4">
             <pre className="text-sm whitespace-pre-wrap">{output}</pre>
@@ -63,30 +82,29 @@ const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
                 setIsOpen(false);
             }
         };
-
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     return (
         <div className="relative" ref={menuRef}>
-            <button 
-                onClick={() => setIsOpen(!isOpen)} 
+            <button
+                onClick={() => setIsOpen(!isOpen)}
                 className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded"
             >
-                <FaEllipsisV />
+                <VscKebabVertical />
             </button>
             {isOpen && (
                 <div className="absolute top-full right-0 mt-1 w-48 bg-dark-card border border-gray-700 rounded-md shadow-lg z-10">
-                    <button 
-                        onClick={() => { onShowOutput(); setIsOpen(false); }} 
+                    <button
+                        onClick={() => { onShowOutput(); setIsOpen(false); }}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
                     >
                         Show Output
                     </button>
                     {isPreviewEnabled && (
-                        <button 
-                            onClick={() => { onShowPreview(); setIsOpen(false); }} 
+                        <button
+                            onClick={() => { onShowPreview(); setIsOpen(false); }}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
                         >
                             Show Preview
@@ -109,6 +127,7 @@ const EditorPage = () => {
     const [messages, setMessages] = useState([]);
     const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
     const [activeActivityBarTab, setActiveActivityBarTab] = useState('explorer');
+
     const socketRef = useRef(null);
     const saveTimeoutRef = useRef(null);
     const { authTokens } = useContext(AuthContext);
@@ -130,33 +149,28 @@ const EditorPage = () => {
             const socket = new WebSocket(
                 `ws://localhost:8000/ws/project/${projectId}/?token=${authTokens.access}`
             );
+
             socketRef.current = socket;
 
             socket.onopen = () => console.log("WebSocket connection established");
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                
                 if (data.type === 'code_update') {
                     setOpenFiles(prevOpenFiles => {
                         const isFileOpen = prevOpenFiles.some(f => f.id === data.fileId);
-                        
                         if (isFileOpen) {
                             return prevOpenFiles.map(f =>
                                 f.id === data.fileId ? { ...f, content: data.message } : f
                             );
                         }
-                        
                         return prevOpenFiles;
                     });
-                } 
-                else if (data.type === 'chat_message') {
-                    setMessages(prevMessages => [...prevMessages, data]); 
-                } 
-                else if (data.type === 'file_tree_update') {
+                } else if (data.type === 'chat_message') {
+                    setMessages(prevMessages => [...prevMessages, data]);
+                } else if (data.type === 'file_tree_update') {
                     setExplorerRefreshKey(prevKey => prevKey + 1);
                 }
             };
-
             socket.onclose = () => console.log("WebSocket connection closed");
 
             return () => socket.close();
@@ -185,8 +199,8 @@ const EditorPage = () => {
         } else {
             axiosInstance.get(`/api/files/${fileId}/`).then(res => {
                 const newFile = {
-                    id: res.data.id, 
-                    name: res.data.name, 
+                    id: res.data.id,
+                    name: res.data.name,
                     content: res.data.content,
                     language: getLanguageFromFile(res.data.name),
                 };
@@ -201,6 +215,7 @@ const EditorPage = () => {
     const handleCloseFile = (fileIdToClose) => {
         const fileToClose = openFiles.find(f => f.id === fileIdToClose);
         setOpenFiles(prevFiles => prevFiles.filter(f => f.id !== fileIdToClose));
+
         if (activeFileId === fileIdToClose) {
             if (openFiles.length > 1) {
                 const newActiveFile = openFiles.find(f => f.id !== fileIdToClose);
@@ -210,6 +225,7 @@ const EditorPage = () => {
                 setSidePanel(null);
             }
         }
+
         if (fileToClose?.language === 'html' && sidePanel === 'preview') {
             setSidePanel(null);
         }
@@ -220,22 +236,20 @@ const EditorPage = () => {
             setOpenFiles(prevFiles =>
                 prevFiles.map(f => f.id === activeFileId ? { ...f, content: value } : f)
             );
-            
+
             if (socketRef.current?.readyState === WebSocket.OPEN) {
-                socketRef.current.send(JSON.stringify({ 
-                    'type': 'code_update', 
+                socketRef.current.send(JSON.stringify({
+                    'type': 'code_update',
                     'message': value,
                     'fileId': activeFileId
                 }));
             }
 
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-
             const valueToSave = value;
             const fileIdToSave = activeFileId;
-
             saveTimeoutRef.current = setTimeout(() => {
-                if (fileIdToSave) { 
+                if (fileIdToSave) {
                     axiosInstance.patch(`/api/files/${fileIdToSave}/`, { content: valueToSave })
                         .then(res => console.log("File saved successfully!"))
                         .catch(err => console.error("Failed to save file", err));
@@ -247,15 +261,17 @@ const EditorPage = () => {
     const handleRunCode = async () => {
         const activeFile = openFiles.find(f => f.id === activeFileId);
         if (!activeFile) return;
-        
+
         setSidePanel('output');
         setIsExecuting(true);
         setOutput('Executing...');
+
         try {
-            const response = await axiosInstance.post('/api/execute/', { 
-                language: activeFile.language, 
-                code: activeFile.content 
+            const response = await axiosInstance.post('/api/execute/', {
+                language: activeFile.language,
+                code: activeFile.content
             });
+
             const { stdout, stderr, compile_output, message, status } = response.data;
             let result = '';
 
@@ -265,11 +281,10 @@ const EditorPage = () => {
             if (message) result += `Message:\n${message}`;
 
             setOutput(result || `Execution finished with status: ${status?.description || 'unknown'}`);
-        } catch (error) { 
-            setOutput("An error occurred while executing the code."); 
-        }
-        finally { 
-            setIsExecuting(false); 
+        } catch (error) {
+            setOutput("An error occurred while executing the code.");
+        } finally {
+            setIsExecuting(false);
         }
     };
 
@@ -285,23 +300,23 @@ const EditorPage = () => {
 
     return (
         <div className="flex flex-col h-screen bg-dark-bg text-white font-sans">
-            <TopBar 
+            <TopBar
                 projectId={projectId}
-                projectTitle={project?.name || 'Loading...'} 
+                projectTitle={project?.name || 'Loading...'}
                 activeFileName={activeFile?.name || 'No file selected'}
-                collaborators={dummyCollaborators} 
+                collaborators={dummyCollaborators}
             />
-            
+
             <div className="flex flex-grow overflow-hidden">
-                <ActivityBar 
-                    activeTab={activeActivityBarTab} 
-                    onTabChange={setActiveActivityBarTab} 
-                    onRunCode={handleRunCode} 
-                    isRunButtonEnabled={isRunButtonEnabled} 
-                    isExecuting={isExecuting} 
+                <ActivityBar
+                    activeTab={activeActivityBarTab}
+                    onTabChange={setActiveActivityBarTab}
+                    onRunCode={handleRunCode}
+                    isRunButtonEnabled={isRunButtonEnabled}
+                    isExecuting={isExecuting}
                 />
-                
-                <div className="w-80 flex-shrink-0 bg-dark-card border-r border-gray-800">
+
+                <div className="w-80 flex-shrink-0 bg-dark-card border-r border-gray-700">
                     {activeActivityBarTab === 'explorer' && (
                         <FileExplorer projectId={projectId} onFileSelect={handleFileSelect} refreshKey={explorerRefreshKey} />
                     )}
@@ -317,26 +332,30 @@ const EditorPage = () => {
                 </div>
 
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex-shrink-0 flex items-center justify-between bg-tab-bar-dark border-b border-gray-800">
+                    <div className="flex-shrink-0 flex items-center justify-between bg-tab-bar-dark border-b border-gray-700">
                         <div className="flex">
                             {openFiles.map(file => (
-                                <div 
-                                    key={file.id} 
-                                    className={`flex items-center px-4 py-2 text-sm border-r border-gray-700 cursor-pointer ${activeFileId === file.id ? 'bg-editor-bg text-white' : 'bg-tab-bar-dark text-gray-400 hover:bg-gray-800'}`} 
+                                <div
+                                    key={file.id}
+                                    className={`flex items-center px-4 py-2 text-sm border-r border-gray-700 cursor-pointer 
+                                        ${activeFileId === file.id 
+                                            ? 'bg-[var(--editor-bg)] text-white'
+                                            : 'bg-tab-bar-dark border-b border-gray-700'
+                                        }`}
                                     onClick={() => handleFileSelect(file.id)}
                                 >
                                     <span className="mr-2">{file.name}</span>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); handleCloseFile(file.id); }} 
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleCloseFile(file.id); }}
                                         className="text-gray-500 hover:text-white"
                                     >
-                                        <FaTimes size={12} />
+                                        <VscClose size={12} />
                                     </button>
                                 </div>
                             ))}
                         </div>
                         <div className="pr-2">
-                            <EditorActions 
+                            <EditorActions
                                 onShowOutput={() => setSidePanel('output')}
                                 onShowPreview={() => setSidePanel('preview')}
                                 isPreviewEnabled={isPreviewEnabled}
@@ -364,8 +383,9 @@ const EditorPage = () => {
                                 </div>
                             )}
                         </div>
+
                         {sidePanel && (
-                            <div className="w-1/2 border-l-2 border-gray-700">
+                            <div className="w-1/2 border-l border-gray-700">
                                 {sidePanel === 'preview' && activeFile && (
                                     <PreviewPanel htmlCode={activeFile.content} onClose={() => setSidePanel(null)} />
                                 )}
@@ -377,10 +397,14 @@ const EditorPage = () => {
                     </div>
                 </main>
             </div>
-            
-            <div className="flex-shrink-0 bg-[var(--primary-purple)] h-7 border-t border-gray-800 flex items-center px-4 text-sm text-white justify-between">
-                <p>CodeLive Status: Connected</p>
-                <p>{dummyCollaborators.length} collaborators online</p>
+
+            <div className="flex-shrink-0 h-7 border-t border-gray-700 flex items-center text-sm text-white justify-between bg-header-dark">
+                <div className="bg-[var(--primary-purple)] h-full flex items-center px-4">
+                    <p className="text-black">CodeLive Status: Connected</p> 
+                </div>
+                <div className="px-4">
+                    <p>{dummyCollaborators.length} collaborators online</p>
+                </div>
             </div>
         </div>
     );
