@@ -1,28 +1,86 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-    VscChevronRight, 
-    VscChevronDown, 
-    VscNewFile, 
-    VscNewFolder, 
-    VscTrash 
-} from 'react-icons/vsc';
-import { FileIcon, defaultStyles } from 'react-file-icon';
+import { VscChevronRight, VscChevronDown, VscNewFile, VscNewFolder, VscTrash } from 'react-icons/vsc';
 import axiosInstance from '../utils/axiosInstance';
 
-// Helper function outside the components in FileExplorer.jsx
+const iconMap = {
+    // Special Filenames
+    ".gitignore": "file_type_git",
+    "dockerfile": "file_type_docker",
+    ".npmignore": "file_type_npm",
+    ".prettierrc": "file_type_prettier",
+    ".eslintrc": "file_type_eslint",
+    ".babelrc": "file_type_babel2", 
+    "babel.config.js": "file_type_babel2",
+    "style.css": "file_type_css2",
+
+    // Extensions
+    js: "file_type_js",
+    jsx: "file_type_reactjs",
+    ts: "file_type_typescript",
+    tsx: "file_type_reactts",
+    py: "file_type_python",
+    html: "file_type_html",
+    css: "file_type_css2",
+    scss: "file_type_scss",
+    json: "file_type_json",
+    md: "file_type_markdown",
+    svg: "file_type_svg",
+    png: "file_type_image",
+    jpg: "file_type_image",
+    jpeg: "file_type_image",
+    gif: "file_type_image",
+    java: "file_type_java",
+    cpp: "file_type_cpp2",
+    cs: "file_type_csharp",
+    go: "file_type_go",
+    php: "file_type_php",
+    rb: "file_type_ruby",
+    rs: "file_type_rust",
+    sh: "file_type_shell",
+    vue: "file_type_vue",
+    svelte: "file_type_svelte",
+    xml: "file_type_xml",
+    yml: "file_type_yaml",
+    yaml: "file_type_yaml",
+    sql: "file_type_sql",
+    txt: "file_type_text",
+    pdf: "file_type_pdf",
+    zip: "file_type_zip",
+    csv: "file_type_text",
+};
+
 const getFileIcon = (fileName) => {
-    const extension = fileName.split('.').pop()?.toLowerCase() || '';
+    const iconSize = 16;
+    let iconName;
     
-    const iconSize = 14;
+    // Check for exact filename match
+    iconName = iconMap[fileName.toLowerCase()];
+
+    // If no exact match, check by extension
+    if (!iconName) {
+        const ext = fileName.split('.').pop().toLowerCase();
+        iconName = iconMap[ext];
+    }
+    
+    // Use default if still no match
+    if (!iconName) {
+        iconName = "default_file";
+    }
+
+    const iconPath = `/vscode-icons/icons/${iconName}.svg`;
 
     return (
-        <div style={{ width: iconSize, height: iconSize }} className="flex-shrink-0">
-            <FileIcon 
-                extension={extension} 
-                {...defaultStyles[extension]}
-                size={iconSize}
-            />
-        </div>
+        <img
+            src={iconPath}
+            alt={`${fileName} icon`}
+            width={iconSize}
+            height={iconSize}
+            className="flex-shrink-0"
+            onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = `/vscode-icons/icons/default_file.svg`;
+            }}
+        />
     );
 };
 
@@ -58,17 +116,17 @@ const CreateInput = ({ onConfirm, onCancel, type, depth }) => {
 };
 
 const FileItemComponent = ({ file, onSelect, onDelete, depth }) => (
-    <div 
-        className="group flex items-center justify-between gap-2 px-2 py-1 hover:bg-gray-700 cursor-pointer text-sm rounded" 
+    <div
+        className="group flex items-center justify-between gap-2 px-2 py-1 hover:bg-gray-700 cursor-pointer text-sm rounded"
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
     >
         <div className="flex items-center gap-2 flex-grow min-w-0" onClick={() => onSelect(file.id)}>
             {getFileIcon(file.name)}
             <span className="truncate text-white">{file.name}</span>
         </div>
-        <button 
-            onClick={(e) => { e.stopPropagation(); onDelete('file', file.id); }} 
-            className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition" 
+        <button
+            onClick={(e) => { e.stopPropagation(); onDelete('file', file.id); }}
+            className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition"
             title="Delete file"
         >
             <VscTrash size={12} />
@@ -89,8 +147,8 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
 
     return (
         <div>
-            <div 
-                className={`group flex items-center justify-between gap-2 px-2 py-1 hover:bg-gray-700 cursor-pointer text-sm rounded ${isSelected ? 'bg-blue-900/50' : ''}`} 
+            <div
+                className={`group flex items-center justify-between gap-2 px-2 py-1 hover:bg-gray-700 cursor-pointer text-sm rounded ${isSelected ? 'bg-blue-900/50' : ''}`}
                 style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
                 <div className="flex items-center gap-2 flex-grow min-w-0" onClick={() => onToggleFolder(folder.id)}>
@@ -99,9 +157,9 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
                         {folder.name}
                     </span>
                 </div>
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onDelete('folder', folder.id); }} 
-                    className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition" 
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDelete('folder', folder.id); }}
+                    className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition"
                     title="Delete folder"
                 >
                     <VscTrash size={12} />
@@ -117,11 +175,11 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
                         <FileItemComponent key={file.id} file={file} onSelect={onFileSelect} onDelete={onDelete} depth={depth + 1} />
                     ))}
                     {creatingItem && creatingItem.parentId === folder.id && (
-                        <CreateInput 
-                            type={creatingItem.type} 
-                            onConfirm={(name) => onCreateItem(name, creatingItem.type, folder.id)} 
-                            onCancel={onCancelCreate} 
-                            depth={depth + 1} 
+                        <CreateInput
+                            type={creatingItem.type}
+                            onConfirm={(name) => onCreateItem(name, creatingItem.type, folder.id)}
+                            onCancel={onCancelCreate}
+                            depth={depth + 1}
                         />
                     )}
                 </div>
@@ -177,10 +235,11 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey }) => {
 
         try {
             await axiosInstance.post(endpoint, payload);
-        } catch (err) { 
-            console.error(`Failed to create ${type}:`, err); 
-        } finally { 
-            setCreatingItem(null); 
+            fetchFileTree(); 
+        } catch (err) {
+            console.error(`Failed to create ${type}:`, err);
+        } finally {
+            setCreatingItem(null);
         }
     };
 
@@ -189,6 +248,7 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey }) => {
             const endpoint = type === 'file' ? `/api/files/${id}/` : `/api/folders/${id}/`;
             try {
                 await axiosInstance.delete(endpoint);
+                fetchFileTree(); 
             } catch (error) {
                 console.error(`Failed to delete ${type}:`, error);
             }
@@ -200,23 +260,22 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey }) => {
             <div className="flex items-center justify-between px-2 pt-2">
                 <h3 className="text-xs font-bold uppercase text-gray-400">EXPLORER</h3>
                 <div className="flex gap-1">
-                    <button 
-                        onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'file' })} 
-                        className="p-1 hover:bg-gray-700 rounded text-gray-400" 
+                    <button
+                        onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'file' })}
+                        className="p-1 hover:bg-gray-700 rounded text-gray-400"
                         title="New File"
                     >
                         <VscNewFile size={14} />
                     </button>
-                    <button 
-                        onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'folder' })} 
-                        className="p-1 hover:bg-gray-700 rounded text-gray-400" 
+                    <button
+                        onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'folder' })}
+                        className="p-1 hover:bg-gray-700 rounded text-gray-400"
                         title="New Folder"
                     >
                         <VscNewFolder size={14} />
                     </button>
                 </div>
             </div>
-
             <div className="flex-1 overflow-y-auto pt-2">
                 {fileTree.map((folder) => (
                     <FolderItemComponent
@@ -234,12 +293,11 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey }) => {
                         onDelete={handleDeleteItem}
                     />
                 ))}
-
                 {creatingItem && creatingItem.parentId === null && (
-                    <CreateInput 
-                        type={creatingItem.type} 
-                        onConfirm={(name) => handleCreateItem(name, creatingItem.type, null)} 
-                        onCancel={() => setCreatingItem(null)} 
+                    <CreateInput
+                        type={creatingItem.type}
+                        onConfirm={(name) => handleCreateItem(name, creatingItem.type, null)}
+                        onCancel={() => setCreatingItem(null)}
                         depth={0}
                     />
                 )}
