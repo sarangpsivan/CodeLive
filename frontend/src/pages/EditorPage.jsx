@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router-dom';
 import TopBar from '../components/TopBar';
@@ -11,18 +11,15 @@ import AuthContext from '../context/AuthContext';
 
 const PreviewPanel = ({ htmlCode, onClose }) => {
     const iframeRef = useRef(null);
-
     const reloadIframe = () => {
         if (iframeRef.current) iframeRef.current.srcdoc = htmlCode;
     };
-
     const openInNewTab = () => {
         const blob = new Blob([htmlCode], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
         URL.revokeObjectURL(url);
     };
-
     return (
         <div className="h-full w-full flex flex-col bg-dark-card">
             <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-2 border-b border-gray-700">
@@ -44,13 +41,13 @@ const PreviewPanel = ({ htmlCode, onClose }) => {
                 </div>
             </div>
             <div className="flex-grow bg-white">
-                <iframe 
-                    ref={iframeRef} 
-                    srcDoc={htmlCode} 
-                    title="Live Preview" 
-                    sandbox="allow-scripts" 
-                    width="100%" 
-                    height="100%" 
+                <iframe
+                    ref={iframeRef}
+                    srcDoc={htmlCode}
+                    title="Live Preview"
+                    sandbox="allow-scripts"
+                    width="100%"
+                    height="100%"
                     style={{ border: 'none' }}
                 />
             </div>
@@ -75,7 +72,6 @@ const OutputPanel = ({ output, onClose }) => (
 const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
-
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -85,7 +81,6 @@ const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
     return (
         <div className="relative" ref={menuRef}>
             <button
@@ -125,33 +120,27 @@ const EditorPage = () => {
     const [output, setOutput] = useState('');
     const [isExecuting, setIsExecuting] = useState(false);
     const [messages, setMessages] = useState([]);
+    const [allMembers, setAllMembers] = useState([]);
     const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
     const [activeActivityBarTab, setActiveActivityBarTab] = useState('explorer');
-
+    const [activeCollaboratorIds, setActiveCollaboratorIds] = useState([]);
     const socketRef = useRef(null);
     const saveTimeoutRef = useRef(null);
     const { authTokens } = useContext(AuthContext);
-
     const executableLanguages = ['python', 'javascript', 'cpp', 'java'];
-    const dummyCollaborators = [
-        { id: 1, name: 'Alice' },
-        { id: 2, name: 'Bob' },
-        { id: 3, name: 'Charlie' },
-        { id: 4, name: 'David' },
-    ];
 
     useEffect(() => {
         axiosInstance.get(`/api/projects/${projectId}/`)
             .then(res => setProject(res.data))
             .catch(err => console.error("Failed to fetch project details", err));
-
+        axiosInstance.get(`/api/projects/${projectId}/members/`)
+            .then(res => setAllMembers(res.data))
+            .catch(err => console.error("Failed to fetch all members", err));
         if (authTokens) {
             const socket = new WebSocket(
                 `ws://localhost:8000/ws/project/${projectId}/?token=${authTokens.access}`
             );
-
             socketRef.current = socket;
-
             socket.onopen = () => console.log("WebSocket connection established");
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -170,12 +159,20 @@ const EditorPage = () => {
                 } else if (data.type === 'file_tree_update') {
                     setExplorerRefreshKey(prevKey => prevKey + 1);
                 }
+                else if (data.type === 'presence_update') {
+                    setActiveCollaboratorIds(data.active_user_ids || []);
+                }
             };
             socket.onclose = () => console.log("WebSocket connection closed");
-
             return () => socket.close();
         }
     }, [projectId, authTokens]);
+
+    const activeMembers = useMemo(() => {
+        return allMembers.filter(member => 
+            activeCollaboratorIds.includes(member.user) 
+        );
+    }, [allMembers, activeCollaboratorIds]);
 
     const getLanguageFromFile = (fileName) => {
         const extension = fileName.split('.').pop();
@@ -215,7 +212,6 @@ const EditorPage = () => {
     const handleCloseFile = (fileIdToClose) => {
         const fileToClose = openFiles.find(f => f.id === fileIdToClose);
         setOpenFiles(prevFiles => prevFiles.filter(f => f.id !== fileIdToClose));
-
         if (activeFileId === fileIdToClose) {
             if (openFiles.length > 1) {
                 const newActiveFile = openFiles.find(f => f.id !== fileIdToClose);
@@ -225,7 +221,6 @@ const EditorPage = () => {
                 setSidePanel(null);
             }
         }
-
         if (fileToClose?.language === 'html' && sidePanel === 'preview') {
             setSidePanel(null);
         }
@@ -236,7 +231,6 @@ const EditorPage = () => {
             setOpenFiles(prevFiles =>
                 prevFiles.map(f => f.id === activeFileId ? { ...f, content: value } : f)
             );
-
             if (socketRef.current?.readyState === WebSocket.OPEN) {
                 socketRef.current.send(JSON.stringify({
                     'type': 'code_update',
@@ -244,7 +238,6 @@ const EditorPage = () => {
                     'fileId': activeFileId
                 }));
             }
-
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
             const valueToSave = value;
             const fileIdToSave = activeFileId;
@@ -261,25 +254,20 @@ const EditorPage = () => {
     const handleRunCode = async () => {
         const activeFile = openFiles.find(f => f.id === activeFileId);
         if (!activeFile) return;
-
         setSidePanel('output');
         setIsExecuting(true);
         setOutput('Executing...');
-
         try {
             const response = await axiosInstance.post('/api/execute/', {
                 language: activeFile.language,
                 code: activeFile.content
             });
-
             const { stdout, stderr, compile_output, message, status } = response.data;
             let result = '';
-
             if (stdout) result += stdout;
             if (stderr) result += `Error:\n${stderr}`;
             if (compile_output) result += `Compile Error:\n${compile_output}`;
             if (message) result += `Message:\n${message}`;
-
             setOutput(result || `Execution finished with status: ${status?.description || 'unknown'}`);
         } catch (error) {
             setOutput("An error occurred while executing the code.");
@@ -303,10 +291,9 @@ const EditorPage = () => {
             <TopBar
                 projectId={projectId}
                 projectTitle={project?.name || 'Loading...'}
-                activeFileName={activeFile?.name || 'No file selected'}
-                collaborators={dummyCollaborators}
+                activeFileName={activeFile?.name || ''}
+                activeMembers={activeMembers}
             />
-
             <div className="flex flex-grow overflow-hidden">
                 <ActivityBar
                     activeTab={activeActivityBarTab}
@@ -315,7 +302,6 @@ const EditorPage = () => {
                     isRunButtonEnabled={isRunButtonEnabled}
                     isExecuting={isExecuting}
                 />
-
                 <div className="w-80 flex-shrink-0 bg-dark-card border-r border-gray-700">
                     {activeActivityBarTab === 'explorer' && (
                         <FileExplorer projectId={projectId} onFileSelect={handleFileSelect} refreshKey={explorerRefreshKey} />
@@ -330,15 +316,14 @@ const EditorPage = () => {
                         </div>
                     )}
                 </div>
-
                 <main className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-shrink-0 flex items-center justify-between bg-tab-bar-dark border-b border-gray-700">
                         <div className="flex">
                             {openFiles.map(file => (
                                 <div
                                     key={file.id}
-                                    className={`flex items-center px-4 py-2 text-sm border-r border-gray-700 cursor-pointer 
-                                        ${activeFileId === file.id 
+                                    className={`flex items-center px-4 py-2 text-sm border-r border-gray-700 cursor-pointer
+                                        ${activeFileId === file.id
                                             ? 'bg-[var(--editor-bg)] text-white'
                                             : 'bg-tab-bar-dark border-b border-gray-700'
                                         }`}
@@ -362,7 +347,6 @@ const EditorPage = () => {
                             />
                         </div>
                     </div>
-
                     <div className="flex-grow flex flex-row">
                         <div className={sidePanel ? "w-1/2 h-full" : "w-full h-full"}>
                             {activeFile ? (
@@ -383,7 +367,6 @@ const EditorPage = () => {
                                 </div>
                             )}
                         </div>
-
                         {sidePanel && (
                             <div className="w-1/2 border-l border-gray-700">
                                 {sidePanel === 'preview' && activeFile && (
@@ -397,13 +380,12 @@ const EditorPage = () => {
                     </div>
                 </main>
             </div>
-
             <div className="flex-shrink-0 h-7 border-t border-gray-700 flex items-center text-sm text-white justify-between bg-header-dark">
                 <div className="bg-[var(--primary-purple)] h-full flex items-center px-4">
-                    <p className="text-black">CodeLive Status: Connected</p> 
+                    <p className="text-black">CodeLive Status: Connected</p>
                 </div>
                 <div className="px-4">
-                    <p>{dummyCollaborators.length} collaborators online</p>
+                    <p>{activeCollaboratorIds.length} collaborators online</p>
                 </div>
             </div>
         </div>
