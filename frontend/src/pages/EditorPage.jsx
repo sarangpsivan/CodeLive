@@ -55,19 +55,69 @@ const PreviewPanel = ({ htmlCode, onClose }) => {
     );
 };
 
-const OutputPanel = ({ output, onClose }) => (
-    <div className="h-full w-full flex flex-col bg-dark-card">
-        <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-4 border-b border-gray-700">
-            <h3 className="text-sm font-semibold">Output</h3>
-            <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white">
-                <VscClose size={16} />
-            </button>
+const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, onClose, isExecuting }) => {
+    const endOfTerminalRef = useRef(null);
+
+    useEffect(() => {
+        endOfTerminalRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [lines]);
+
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
+        onSubmit();
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            onSubmit();
+        }
+    };
+
+    return (
+        <div className="h-full w-full flex flex-col bg-dark-card">
+            <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-4 border-b border-gray-700">
+                <h3 className="text-sm font-semibold text-white">Terminal</h3>
+                <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white">
+                    <VscClose size={16} />
+                </button>
+            </div>
+
+            <div className="flex-grow overflow-y-auto p-4 font-mono text-sm">
+                {lines.map((line, index) => (
+                    <div key={index} className="whitespace-pre-wrap">
+                        {line.type === 'output' && (
+                            <span className="text-gray-300">{line.content}</span>
+                        )}
+                        {line.type === 'input' && (
+                            <span className="text-cyan-400"> {line.content}</span>
+                        )}
+                    </div>
+                ))}
+                <div ref={endOfTerminalRef} />
+            </div>
+
+            <p className="text-xs text-gray-500 italic px-4 pb-2">
+            Note: Provide all required inputs here *before* clicking 'Run'. This is not a live terminal.
+            </p>
+
+            <div className="flex-shrink-0 border-t border-gray-700 p-2 bg-header-dark">
+                <form onSubmit={handleFormSubmit} className="flex items-center">
+                    <span className="text-cyan-400 font-mono text-sm pl-2 pr-1"></span>
+                    <input
+                        type="text"
+                        className="flex-grow bg-transparent text-white font-mono text-sm focus:outline-none"
+                        placeholder={isExecuting ? 'Executing...' : "Provide all inputs (press Enter after each)"}
+                        value={inputValue}
+                        onChange={(e) => onInputChange(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        disabled={isExecuting}
+                    />
+                </form>
+            </div>
         </div>
-        <div className="flex-grow overflow-y-auto p-4">
-            <pre className="text-sm whitespace-pre-wrap">{output}</pre>
-        </div>
-    </div>
-);
+    );
+};
 
 const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -117,7 +167,9 @@ const EditorPage = () => {
     const [openFiles, setOpenFiles] = useState([]);
     const [activeFileId, setActiveFileId] = useState(null);
     const [sidePanel, setSidePanel] = useState(null);
-    const [output, setOutput] = useState('');
+    const [terminalLines, setTerminalLines] = useState([]);
+    const [currentTerminalInput, setCurrentTerminalInput] = useState('');
+    const [inputHistory, setInputHistory] = useState([]); 
     const [isExecuting, setIsExecuting] = useState(false);
     const [messages, setMessages] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
@@ -251,28 +303,49 @@ const EditorPage = () => {
         }
     };
 
+    const handleTerminalSubmit = () => {
+        if (currentTerminalInput.trim() === '') return;
+
+        setTerminalLines(prev => [...prev, { type: 'input', content: currentTerminalInput }]);
+        
+        setInputHistory(prev => [...prev, currentTerminalInput]);
+        
+        setCurrentTerminalInput('');
+    };
+
     const handleRunCode = async () => {
         const activeFile = openFiles.find(f => f.id === activeFileId);
         if (!activeFile) return;
+
         setSidePanel('output');
         setIsExecuting(true);
-        setOutput('Executing...');
+        setTerminalLines([{ type: 'output', content: 'Executing...' }]);
+        
+        const stdin = inputHistory.join('\n');
+
         try {
             const response = await axiosInstance.post('/api/execute/', {
                 language: activeFile.language,
-                code: activeFile.content
+                code: activeFile.content,
+                input: stdin 
             });
+            
             const { stdout, stderr, compile_output, message, status } = response.data;
             let result = '';
             if (stdout) result += stdout;
             if (stderr) result += `Error:\n${stderr}`;
             if (compile_output) result += `Compile Error:\n${compile_output}`;
             if (message) result += `Message:\n${message}`;
-            setOutput(result || `Execution finished with status: ${status?.description || 'unknown'}`);
+            
+            setTerminalLines([{ type: 'output', content: result || `Execution finished with status: ${status?.description || 'unknown'}` }]);
+
         } catch (error) {
-            setOutput("An error occurred while executing the code.");
-        } finally {
+            setTerminalLines([{ type: 'output', content: "An error occurred while executing the code." }]);
+        }
+        finally {
             setIsExecuting(false);
+            setInputHistory([]);
+            setCurrentTerminalInput('');
         }
     };
 
@@ -373,7 +446,14 @@ const EditorPage = () => {
                                     <PreviewPanel htmlCode={activeFile.content} onClose={() => setSidePanel(null)} />
                                 )}
                                 {sidePanel === 'output' && (
-                                    <OutputPanel output={output} onClose={() => setSidePanel(null)} />
+                                    <SimulatedTerminalPanel
+                                        lines={terminalLines}
+                                        inputValue={currentTerminalInput}
+                                        onInputChange={setCurrentTerminalInput}
+                                        onSubmit={handleTerminalSubmit}
+                                        onClose={() => setSidePanel(null)}
+                                        isExecuting={isExecuting}
+                                    />
                                 )}
                             </div>
                         )}
