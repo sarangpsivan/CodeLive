@@ -178,7 +178,7 @@ const EditorPage = () => {
     const [activeCollaboratorIds, setActiveCollaboratorIds] = useState([]);
     const socketRef = useRef(null);
     const saveTimeoutRef = useRef(null);
-    const { authTokens } = useContext(AuthContext);
+    const { authTokens, user } = useContext(AuthContext);
     const executableLanguages = ['python', 'javascript', 'cpp', 'java'];
 
     useEffect(() => {
@@ -225,6 +225,25 @@ const EditorPage = () => {
             activeCollaboratorIds.includes(member.user) 
         );
     }, [allMembers, activeCollaboratorIds]);
+
+    const enrichedMessages = useMemo(() => {
+        return messages.map(msg => {
+            // Find the member from the allMembers list
+            // *** We are ASSUMING msg.user contains the user's ID.
+            // *** If not, you'll tell me what the field is called (e.g., msg.author_id)
+            const member = allMembers.find(m => m.user === msg.user);
+            
+            return {
+            ...msg,
+            // Add a 'username' field, falling back to 'Unknown'
+            username: member?.username || 'Unknown User' 
+            // You can also fall back to the email if you want:
+            // username: member?.username || msg.email || 'Unknown'
+            };
+        });
+    }, [messages, allMembers]);
+  
+  
 
     const getLanguageFromFile = (fileName) => {
         const extension = fileName.split('.').pop();
@@ -380,7 +399,7 @@ const EditorPage = () => {
                         <FileExplorer projectId={projectId} onFileSelect={handleFileSelect} refreshKey={explorerRefreshKey} />
                     )}
                     {activeActivityBarTab === 'chat' && (
-                        <ChatPanel messages={messages} onSendMessage={handleSendMessage} />
+                        <ChatPanel messages={enrichedMessages} onSendMessage={handleSendMessage} currentUser={user} />
                     )}
                     {activeActivityBarTab === 'alerts' && (
                         <div className="p-4">
