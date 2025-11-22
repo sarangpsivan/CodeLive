@@ -16,6 +16,8 @@ const DashboardPage = () => {
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
     const [stats, setStats] = useState({ collaborators: 0 });
 
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+
     const fetchProjects = () => {
         axiosInstance.get('/api/projects/')
             .then(res => setProjects(res.data))
@@ -58,7 +60,7 @@ const DashboardPage = () => {
 
             console.log("Attempting WebSocket connection (Dashboard)...");
             socket = new WebSocket(
-                `ws://localhost:8000/ws/user/?token=${currentAuthTokens.access}`
+                `${wsBaseUrl}/ws/user/?token=${currentAuthTokens.access}`
             );
 
             socket.onopen = () => console.log("WebSocket connection established (Dashboard).");
@@ -94,7 +96,7 @@ const DashboardPage = () => {
                 socket.close(1000);
             }
         };
-    }, [user?.user_id]); 
+    }, [user?.user_id]);  
 
     const handleProjectCreated = (newProject) => {
         setProjects(prev => [...prev, newProject]);

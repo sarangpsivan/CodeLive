@@ -22,12 +22,12 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-)&#=c#9t)7y$p#7)^q!g6^ud4cabwv=o7u6hh2s+rs5x=13imf'
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -98,7 +98,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 DATABASES = {
     'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3',
+        default=os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3'),
         conn_max_age=600
     )
 }
@@ -135,9 +135,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SITE_ID = 1
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-]
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173').split(',')
 
 # Django REST Framework Settings
 REST_FRAMEWORK = {
@@ -175,11 +174,8 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-# tells the backend where to redirect on the frontend after a social login.
-ALLAUTH_HEADLESS_CLIENT_URLS = {
-    "google": "http://localhost:5173/social-auth-callback",
-    "github": "http://localhost:5173/social-auth-callback",
-}
+# Allauth Redirects
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
 # dj-rest-auth Settings to use JWT
 REST_AUTH = {
@@ -223,12 +219,26 @@ SIMPLE_JWT = {
 # ASGI application definition to tell Django to use Channels
 ASGI_APPLICATION = "core.asgi.application"
 
-# Channel layer configuration for Redis
+# Channel Layer
+REDIS_HOST = os.environ.get('REDIS_HOST', '127.0.0.1')
+REDIS_PORT = os.environ.get('REDIS_PORT', 6379)
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [(REDIS_HOST, int(REDIS_PORT))],
         },
     },
 }
+
+
+# Add this to point to your new adapter
+ACCOUNT_ADAPTER = 'api.adapters.CustomAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'api.adapters.CustomSocialAccountAdapter'
+
+# External API Keys (As discussed previously)
+JUDGE0_API_KEY = os.environ.get('JUDGE0_API_KEY')
+
+# Fallback redirect if the adapter fails or is bypassed
+LOGIN_REDIRECT_URL = "http://localhost:5173/dashboard"

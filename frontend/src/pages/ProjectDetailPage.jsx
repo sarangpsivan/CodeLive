@@ -44,6 +44,7 @@ const ProjectDetailPage = () => {
     const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, docId: null, docTitle: '' });
 
     const isOwner = project && user && project.owner === user.user_id;
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
     const fetchData = () => {
         axiosInstance.get(`/api/projects/${projectId}/`)
@@ -99,7 +100,7 @@ const ProjectDetailPage = () => {
 
             console.log("Attempting WebSocket connection (Project)...");
             socket = new WebSocket(
-                `ws://localhost:8000/ws/project/${projectId}/?token=${currentAuthTokens.access}`
+                `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`
             );
 
             socket.onopen = () => {

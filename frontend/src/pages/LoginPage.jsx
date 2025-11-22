@@ -5,6 +5,7 @@ import { FaGithub, FaGoogle } from 'react-icons/fa';
 
 const LoginPage = () => {
     const { loginUser } = useContext(AuthContext);
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -56,10 +57,10 @@ const LoginPage = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <a href="http://localhost:8000/accounts/github/login/" className="flex items-center justify-center py-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition">
+                        <a href={`${apiBaseUrl}/accounts/github/login/`} className="flex items-center justify-center py-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition">
                             <FaGithub className="mr-2" /> GitHub
                         </a>
-                        <a href="http://localhost:8000/accounts/google/login/" className="flex items-center justify-center py-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition">
+                        <a href={`${apiBaseUrl}/accounts/google/login/`} className="flex items-center justify-center py-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition">
                             <FaGoogle className="mr-2" /> Google
                         </a>
                     </div>

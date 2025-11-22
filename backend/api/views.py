@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -315,7 +316,7 @@ class CodeExecutionView(APIView):
         }
         headers = {
             "content-type": "application/json",
-            "X-RapidAPI-Key": os.environ.get('JUDGE0_API_KEY'),
+            "X-RapidAPI-Key": settings.JUDGE0_API_KEY,
             "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
         }
 

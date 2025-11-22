@@ -180,6 +180,7 @@ const EditorPage = () => {
     const saveTimeoutRef = useRef(null);
     const { authTokens, user } = useContext(AuthContext);
     const executableLanguages = ['python', 'javascript', 'cpp', 'java'];
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
     useEffect(() => {
         axiosInstance.get(`/api/projects/${projectId}/`)
@@ -190,7 +191,7 @@ const EditorPage = () => {
             .catch(err => console.error("Failed to fetch all members", err));
         if (authTokens) {
             const socket = new WebSocket(
-                `ws://localhost:8000/ws/project/${projectId}/?token=${authTokens.access}`
+                `${wsBaseUrl}/ws/project/${projectId}/?token=${authTokens.access}`
             );
             socketRef.current = socket;
             socket.onopen = () => console.log("WebSocket connection established");

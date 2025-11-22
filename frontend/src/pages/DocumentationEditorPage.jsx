@@ -52,6 +52,7 @@ const DocumentationEditorPage = () => {
 
     const socketRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
     useEffect(() => {
         setStatus('Loading...');
@@ -100,7 +101,7 @@ const DocumentationEditorPage = () => {
             }
 
             console.log("Attempting WebSocket connection (Docs)...");
-            const wsUrl = `ws://localhost:8000/ws/project/${projectId}/?token=${currentAuthTokens.access}`;
+            const wsUrl = `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`;
             socketRef.current = new WebSocket(wsUrl);
 
             socketRef.current.onopen = () => {
