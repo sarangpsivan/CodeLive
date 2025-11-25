@@ -8,6 +8,7 @@ import ChatPanel from '../components/ChatPanel';
 import axiosInstance from '../utils/axiosInstance';
 import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical } from 'react-icons/vsc';
 import AuthContext from '../context/AuthContext';
+import AIChatPanel from '../components/AIChatPanel';
 
 const PreviewPanel = ({ htmlCode, onClose }) => {
     const iframeRef = useRef(null);
@@ -402,6 +403,12 @@ const EditorPage = () => {
                     {activeActivityBarTab === 'chat' && (
                         <ChatPanel messages={enrichedMessages} onSendMessage={handleSendMessage} currentUser={user} />
                     )}
+                    
+                    {/* 2. ADD THIS BLOCK */}
+                    {activeActivityBarTab === 'ai_chat' && (
+                        <AIChatPanel projectId={projectId} />
+                    )}
+
                     {activeActivityBarTab === 'alerts' && (
                         <div className="p-4">
                             <h3 className="text-lg font-semibold mb-4">Alerts</h3>

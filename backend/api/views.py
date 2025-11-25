@@ -18,6 +18,7 @@ from .serializers import (
     FileCreateSerializer, FolderCreateSerializer, DocumentationSerializer, DocumentationListSerializer
 )
 from .permissions import IsProjectOwner
+from .rag_service import index_project, chat_with_project 
 
 
 # Helper functions
@@ -439,3 +440,46 @@ class DocumentationListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         new_doc = serializer.save() 
         send_doc_list_update_signal(new_doc.project.id, 'New document created.')
+
+
+# RAG Views
+
+class AIIndexProjectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_id):
+        # Check permission
+        try:
+            project = Project.objects.get(id=project_id)
+            # Only members can re-index
+            if not Membership.objects.filter(project=project, user=request.user, status=Membership.Status.APPROVED).exists():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Run Indexing
+        success, message = index_project(project_id)
+        if success:
+            return Response({'message': message})
+        else:
+            return Response({'error': message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class AIChatView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_id):
+        query = request.data.get('query')
+        if not query:
+            return Response({'error': 'Query is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check permission
+        if not Membership.objects.filter(project_id=project_id, user=request.user, status=Membership.Status.APPROVED).exists():
+             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            # Get Answer from RAG Service
+            answer = chat_with_project(project_id, query)
+            return Response({'answer': answer})
+        except Exception as e:
+            print(f"AI Error: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

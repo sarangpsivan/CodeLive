@@ -242,3 +242,6 @@ JUDGE0_API_KEY = os.environ.get('JUDGE0_API_KEY')
 
 # Fallback redirect if the adapter fails or is bypassed
 LOGIN_REDIRECT_URL = "http://localhost:5173/dashboard"
+
+# AI Configuration
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')

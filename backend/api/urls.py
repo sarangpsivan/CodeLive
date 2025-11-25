@@ -17,6 +17,7 @@ from .views import (
     DocumentationListCreateView, 
     DocumentationRetrieveUpdateDestroyView 
 )
+from .views import AIIndexProjectView, AIChatView
 
 urlpatterns = [
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -39,4 +40,6 @@ urlpatterns = [
     path("requests/<int:membership_id>/action/", MembershipRequestActionView.as_view(), name="membership-request-action"),
     path("projects/<int:project_id>/documentation/", DocumentationListCreateView.as_view(), name="project-documentation-list-create"),
     path("projects/<int:project_id>/documentation/<int:pk>/", DocumentationRetrieveUpdateDestroyView.as_view(), name="project-documentation-detail"),
+    path("projects/<int:project_id>/ai/index/", AIIndexProjectView.as_view(), name="ai-index-project"),
+    path("projects/<int:project_id>/ai/chat/", AIChatView.as_view(), name="ai-chat"),
 ]
