@@ -17,7 +17,7 @@ from .serializers import (
     MemberSerializer, FolderSerializer, FileDetailSerializer,
     FileCreateSerializer, FolderCreateSerializer, DocumentationSerializer, DocumentationListSerializer
 )
-from .permissions import IsProjectOwner
+from .permissions import IsProjectOwner, IsEditorOrOwner
 from .rag_service import index_project, chat_with_project 
 
 
@@ -255,7 +255,7 @@ class FileTreeView(APIView):
 class FileCreateView(generics.CreateAPIView):
     queryset = File.objects.all()
     serializer_class = FileCreateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEditorOrOwner]
 
     def perform_create(self, serializer):
         new_file = serializer.save()
@@ -263,7 +263,7 @@ class FileCreateView(generics.CreateAPIView):
 
 class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = FileDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEditorOrOwner]
     queryset = File.objects.all()
 
     def perform_destroy(self, instance):
@@ -274,7 +274,7 @@ class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
 class FolderCreateView(generics.CreateAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderCreateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEditorOrOwner]
 
     def perform_create(self, serializer):
         new_folder = serializer.save()
@@ -282,7 +282,7 @@ class FolderCreateView(generics.CreateAPIView):
 
 class FolderDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = FolderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEditorOrOwner]
     queryset = Folder.objects.all()
 
     def perform_destroy(self, instance):

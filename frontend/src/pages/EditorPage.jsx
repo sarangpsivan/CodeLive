@@ -228,6 +228,16 @@ const EditorPage = () => {
         );
     }, [allMembers, activeCollaboratorIds]);
 
+    // Determine if the current user has edit permissions
+    const canEdit = useMemo(() => {
+        if (!project || !user) return false;
+        if (project.owner === user.user_id) return true; // Owner always edits
+        
+        const myMembership = allMembers.find(m => m.user === user.user_id);
+        // Only ADMIN and EDITOR roles can edit
+        return myMembership?.role === 'ADMIN' || myMembership?.role === 'EDITOR';
+    }, [project, user, allMembers]);
+
     const enrichedMessages = useMemo(() => {
         return messages.map(msg => {
             // Find the member from the allMembers list
@@ -398,7 +408,7 @@ const EditorPage = () => {
                 />
                 <div className="w-80 flex-shrink-0 bg-dark-card border-r border-gray-700">
                     {activeActivityBarTab === 'explorer' && (
-                        <FileExplorer projectId={projectId} onFileSelect={handleFileSelect} refreshKey={explorerRefreshKey} />
+                        <FileExplorer projectId={projectId} onFileSelect={handleFileSelect} refreshKey={explorerRefreshKey} canEdit={canEdit} />
                     )}
                     {activeActivityBarTab === 'chat' && (
                         <ChatPanel messages={enrichedMessages} onSendMessage={handleSendMessage} currentUser={user} />
@@ -457,7 +467,7 @@ const EditorPage = () => {
                                     value={activeFile.content ?? ''}
                                     onChange={handleEditorChange}
                                     options={{
-                                        readOnly: false,
+                                        readOnly: !canEdit,
                                         minimap: { enabled: false }
                                     }}
                                 />

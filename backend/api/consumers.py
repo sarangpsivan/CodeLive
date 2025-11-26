@@ -1,6 +1,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from .models import ChatMessage, Project, Documentation
+from .models import ChatMessage, Project, Documentation, Membership
 from django.contrib.auth.models import User
 from channels.db import database_sync_to_async
 
@@ -10,11 +10,15 @@ class ProjectConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.project_id = self.scope['url_route']['kwargs']['projectId']
         self.room_group_name = f'project_{self.project_id}'
-        
         self.user = self.scope["user"]
+
         if self.user.is_anonymous:
             await self.close()
             return
+
+        # --- ADD THIS BLOCK: Check Permissions on Connect ---
+        self.can_edit = await self.check_edit_permission(self.user.id, self.project_id)
+        # ----------------------------------------------------
 
         if self.room_group_name not in active_users_in_project:
             active_users_in_project[self.room_group_name] = set()
@@ -22,8 +26,14 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        print(f"WebSocket connected to project {self.project_id}")
+        
+        # Send the permission status to the frontend client so it knows to lock the UI
+        await self.send(text_data=json.dumps({
+            'type': 'permission_status',
+            'can_edit': self.can_edit
+        }))
 
+        print(f"WebSocket connected to project {self.project_id} (User: {self.user.username}, Can Edit: {self.can_edit})")
         await self.broadcast_presence()
 
     async def disconnect(self, close_code):
@@ -43,6 +53,9 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         message_type = data.get('type')
 
         if message_type == 'code_update':
+            if not self.can_edit:
+                print(f"Blocked code update from Viewer: {self.user.username}")
+                return
             await self.channel_layer.group_send(
                 self.room_group_name, {
                 'type': 'broadcast_code', 
@@ -153,6 +166,22 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             print(f"Project {self.project_id} not found")
         except Exception as e:
             print(f"Error saving chat message: {e}")
+
+    @database_sync_to_async
+    def check_edit_permission(self, user_id, project_id):
+        try:
+            project = Project.objects.get(id=project_id)
+            if project.owner.id == user_id:
+                return True
+            
+            membership = Membership.objects.get(
+                project_id=project_id, 
+                user_id=user_id, 
+                status=Membership.Status.APPROVED
+            )
+            return membership.role in [Membership.Role.ADMIN, Membership.Role.EDITOR]
+        except (Project.DoesNotExist, Membership.DoesNotExist):
+            return False
 
 class UserNotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
