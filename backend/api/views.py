@@ -346,7 +346,6 @@ class CodeExecutionView(APIView):
 # dashbord view
 
 class DashboardStatsView(APIView):
-    
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
@@ -361,11 +360,14 @@ class DashboardStatsView(APIView):
             project__in=user_projects,
             status=Membership.Status.APPROVED
         ).values_list('user', flat=True).distinct()
-
+        
         total_collaborators = max(0, collaborator_ids.count() - 1)
 
+        total_files = File.objects.filter(project__in=user_projects).count()
+
         data = {
-            'total_collaborators': total_collaborators
+            'total_collaborators': total_collaborators,
+            'total_files': total_files 
         }
         return Response(data)
     

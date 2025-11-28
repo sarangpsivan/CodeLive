@@ -7,7 +7,7 @@ import FileExplorer from '../components/FileExplorer';
 import ChatPanel from '../components/ChatPanel';
 import AlertsPanel from '../components/AlertsPanel';
 import axiosInstance from '../utils/axiosInstance';
-import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical } from 'react-icons/vsc';
+import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical, VscTerminal } from 'react-icons/vsc';
 import AuthContext from '../context/AuthContext';
 import AIChatPanel from '../components/AIChatPanel';
 
@@ -25,20 +25,20 @@ const PreviewPanel = ({ htmlCode, onClose }) => {
 
     return (
         <div className="h-full w-full flex flex-col bg-dark-card">
-            <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-2 border-b border-gray-700">
+            <div className="flex-shrink-0 flex items-center justify-between bg-[#1F242A] h-10 px-2 border-b border-gray-700">
                 <div className="flex items-center gap-2">
-                    <button onClick={reloadIframe} title="Refresh" className="text-gray-400 hover:text-white">
+                    <button onClick={reloadIframe} title="Refresh" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
                         <VscRefresh size={14} />
                     </button>
-                    <div className="bg-dark-bg text-gray-300 text-xs px-2 py-1 rounded w-64 truncate">
+                    <div className="bg-black/50 text-gray-300 text-xs px-2 py-1 rounded w-64 truncate border border-gray-700">
                         https://preview.codelive.app
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={openInNewTab} title="Open in new tab" className="text-gray-400 hover:text-white">
+                <div className="flex items-center gap-1">
+                    <button onClick={openInNewTab} title="Open in new tab" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
                         <VscLinkExternal size={14} />
                     </button>
-                    <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white">
+                    <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
                         <VscClose size={16} />
                     </button>
                 </div>
@@ -78,41 +78,61 @@ const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, on
     };
 
     return (
-        <div className="h-full w-full flex flex-col bg-dark-card">
-            <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-4 border-b border-gray-700">
-                <h3 className="text-sm font-semibold text-white">Terminal</h3>
-                <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white">
+        <div className="h-full w-full flex flex-col bg-black border-l border-gray-800 font-sans">
+            
+            <div className="h-10 px-4 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <VscTerminal className="text-[var(--primary-purple)]" size={16} />
+                    <h3 className="text-xs uppercase tracking-wide text-gray-300">Terminal</h3>
+                </div>
+                <button 
+                    onClick={onClose} 
+                    title="Close Panel" 
+                    className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
+                >
                     <VscClose size={16} />
                 </button>
             </div>
-            <div className="flex-grow overflow-y-auto p-4 font-mono text-sm">
+
+            <div className="flex-grow overflow-y-auto p-4 font-mono text-sm space-y-1 scrollbar-hide text-gray-300">
+                {lines.length === 0 && (
+                    <div className="text-gray-600 italic text-center mt-10 text-xs">
+                        Ready to execute code...
+                    </div>
+                )}
                 {lines.map((line, index) => (
-                    <div key={index} className="whitespace-pre-wrap">
+                    <div key={index} className="whitespace-pre-wrap break-words">
                         {line.type === 'output' && (
-                            <span className="text-gray-300">{line.content}</span>
+                            <span>{line.content}</span>
                         )}
                         {line.type === 'input' && (
-                            <span className="text-cyan-400"> {line.content}</span>
+                            <span className="text-cyan-400 font-bold">{line.content}</span>
                         )}
                     </div>
                 ))}
                 <div ref={endOfTerminalRef} />
             </div>
-            <p className="text-xs text-gray-500 italic px-4 pb-2">
-            Note: Provide all required inputs here *before* clicking 'Run'. This is not a live terminal.
-            </p>
-            <div className="flex-shrink-0 border-t border-gray-700 p-2 bg-header-dark">
-                <form onSubmit={handleFormSubmit} className="flex items-center">
-                    <span className="text-cyan-400 font-mono text-sm pl-2 pr-1"></span>
-                    <input
-                        type="text"
-                        className="flex-grow bg-transparent text-white font-mono text-sm focus:outline-none"
-                        placeholder={isExecuting ? 'Executing...' : "Provide all inputs (press Enter after each)"}
-                        value={inputValue}
-                        onChange={(e) => onInputChange(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        disabled={isExecuting}
-                    />
+
+            <div className="p-3 border-t border-gray-800 bg-[#1F242A] flex-shrink-0">
+                <div className="flex justify-between items-center mb-2 px-1">
+                    <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Standard Input</span>
+                    <span className="text-[10px] text-gray-500">Press Enter to send</span>
+                </div>
+                
+                <form onSubmit={handleFormSubmit} className="flex gap-2">
+                    <div className="flex-grow flex items-center bg-gray-900 rounded-lg px-3 py-2 border border-gray-700 focus-within:ring-1 focus-within:ring-[var(--primary-purple)]">
+                        <span className="text-green-500 font-mono text-sm mr-2 select-none">➜</span>
+                        <input
+                            type="text"
+                            className="flex-grow bg-transparent text-white font-mono text-sm focus:outline-none placeholder-gray-600"
+                            placeholder={isExecuting ? 'Program is running...' : "Type input here..."}
+                            value={inputValue}
+                            onChange={(e) => onInputChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            disabled={isExecuting}
+                            autoComplete="off"
+                        />
+                    </div>
                 </form>
             </div>
         </div>

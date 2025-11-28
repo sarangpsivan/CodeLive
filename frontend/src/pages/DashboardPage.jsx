@@ -14,7 +14,7 @@ const DashboardPage = () => {
     const [projects, setProjects] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
-    const [stats, setStats] = useState({ collaborators: 0 });
+    const [stats, setStats] = useState({ collaborators: 0, files: 0 });
 
     const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
@@ -27,7 +27,10 @@ const DashboardPage = () => {
     const fetchStats = () => {
         axiosInstance.get('/api/dashboard-stats/')
             .then(res => {
-                setStats(prev => ({ ...prev, collaborators: res.data.total_collaborators }));
+                setStats({ 
+                    collaborators: res.data.total_collaborators,
+                    files: res.data.total_files
+                });
             })
             .catch(err => console.error("Failed to fetch stats", err));
     };
@@ -140,7 +143,7 @@ const DashboardPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <StatCard value={projects.length} label="Active Projects" />
                         <StatCard value={stats.collaborators} label="Collaborators" />
-                        <StatCard value="0" label="Lines of Code" />
+                        <StatCard value={stats.files} label="Total Files" />
                     </div>
                 </section>
             </main>

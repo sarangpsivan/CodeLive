@@ -9,30 +9,30 @@ import { jwtDecode } from 'jwt-decode';
 
 // Custom styles for Quill editor
 const quillStyle = `
-  body { background-color: #111827; } /* gray-900 for the whole page */
+  body { background-color: #000000; } 
   .ql-toolbar {
-    background: #374151; /* gray-700 */
+    background: #1F242A; 
     border-top-left-radius: 0.5rem;
     border-top-right-radius: 0.5rem;
-    border: 1px solid #4B5563; /* gray-600 */
+    border: 1px solid #374151;
   }
   .ql-container {
-    background: #1F2937; /* gray-800 */
+    background: #161B22; 
     border-bottom-left-radius: 0.5rem;
     border-bottom-right-radius: 0.5rem;
-    border: 1px solid #4B5563; /* gray-600 */
-    color: #F3F4F6; /* gray-100 */
-    min-height: calc(100vh - 150px); /* Adjust based on header/footer height */
+    border: 1px solid #374151;
+    color: #F3F4F6; 
+    min-height: calc(100vh - 150px); 
     font-size: 1rem;
   }
   .ql-editor {
       min-height: calc(100vh - 150px);
   }
   .ql-editor::before {
-    color: #9CA3AF !important; /* gray-400 */
+    color: #9CA3AF !important; 
   }
-  .ql-snow .ql-stroke { stroke: #D1D5DB; } /* gray-300 */
-  .ql-snow .ql-picker-label { color: #D1D5DB; } /* gray-300 */
+  .ql-snow .ql-stroke { stroke: #D1D5DB; } 
+  .ql-snow .ql-picker-label { color: #D1D5DB; } 
 `;
 
 const DocumentationEditorPage = () => {
@@ -216,7 +216,7 @@ const DocumentationEditorPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white p-6 font-sans">
+        <div className="min-h-screen bg-black text-white p-6 font-sans">
             <style>{quillStyle}</style>
 
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
