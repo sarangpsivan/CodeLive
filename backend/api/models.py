@@ -78,3 +78,19 @@ class Documentation(models.Model):
 
     class Meta:
         ordering = ['title']
+
+class Alert(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='alerts')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_alerts')
+    message = models.TextField()
+    is_resolved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    file_name = models.CharField(max_length=255, blank=True, null=True)
+    line_number = models.IntegerField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Alert by {self.sender.username} on {self.project.name}"

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Project, Membership, Folder, File, Documentation
+from .models import Project, Membership, Folder, File, Documentation, Alert
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserSerializer(serializers.ModelSerializer):
@@ -114,3 +114,21 @@ class DocumentationListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Documentation
         fields = ['id', 'title', 'updated_at', 'last_updated_by_username'] 
+
+class AlertSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField()
+    sender_email = serializers.CharField(source='sender.email', read_only=True)
+
+    class Meta:
+        model = Alert
+        fields = ['id', 'project', 'sender', 'sender_name', 'sender_email', 'message', 'is_resolved', 'created_at', 'file_name', 'line_number']
+        read_only_fields = ['id', 'sender', 'created_at', 'project']
+    
+    def create(self, validated_data):
+        validated_data['sender'] = self.context['request'].user
+        validated_data['project'] = self.context['project']
+        return super().create(validated_data)
+
+    def get_sender_name(self, obj):
+        full_name = f"{obj.sender.first_name} {obj.sender.last_name}".strip()
+        return full_name if full_name else obj.sender.username

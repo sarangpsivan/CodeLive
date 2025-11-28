@@ -11,11 +11,11 @@ import requests
 import os
 import time
 
-from .models import Project, Membership, Folder, File, Documentation
+from .models import Project, Membership, Folder, File, Documentation, Alert
 from .serializers import (
     UserSerializer, ProjectSerializer, MyTokenObtainPairSerializer,
     MemberSerializer, FolderSerializer, FileDetailSerializer,
-    FileCreateSerializer, FolderCreateSerializer, DocumentationSerializer, DocumentationListSerializer
+    FileCreateSerializer, FolderCreateSerializer, DocumentationSerializer, DocumentationListSerializer, AlertSerializer
 )
 from .permissions import IsProjectOwner, IsEditorOrOwner
 from .rag_service import index_project, chat_with_project 
@@ -23,7 +23,6 @@ from .rag_service import index_project, chat_with_project
 
 # Helper functions
 def send_collaborator_update_signal(project_id, message, removed_user_id=None):
-    """Broadcasts a consistent signal to update the collaborator list on the frontend."""
     channel_layer = get_channel_layer()
     payload = {
         'type': 'collaborator_update',
@@ -35,7 +34,6 @@ def send_collaborator_update_signal(project_id, message, removed_user_id=None):
     async_to_sync(channel_layer.group_send)(f'project_{project_id}', payload)
 
 def send_file_tree_update_signal(project_id, message):
-    """Broadcasts a consistent signal to update the file tree on the frontend."""
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         f'project_{project_id}',
@@ -43,7 +41,6 @@ def send_file_tree_update_signal(project_id, message):
     )
 
 def send_doc_list_update_signal(project_id, message):
-    """Broadcasts a signal to update the document list on the frontend."""
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         f'project_{project_id}',
@@ -51,7 +48,6 @@ def send_doc_list_update_signal(project_id, message):
     )
 
 def send_doc_content_update_signal(project_id, document_id, updated_data):
-    """Broadcasts a signal that specific doc content was updated (after save)."""
     print(f"VIEW: Attempting to send doc_content_update signal for doc {document_id} in project {project_id}") 
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
@@ -63,6 +59,19 @@ def send_doc_content_update_signal(project_id, document_id, updated_data):
             'updated_at': updated_data.get('updated_at', None).isoformat() if updated_data.get('updated_at') else None,
             'title': updated_data.get('title'),
             'content': updated_data.get('content')
+        }
+    )
+
+def send_alert_signal(project_id, message):
+    unresolved_count = Alert.objects.filter(project_id=project_id, is_resolved=False).count()
+    
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'project_{project_id}',
+        {
+            'type': 'alert_update', 
+            'message': message,
+            'unresolved_count': unresolved_count 
         }
     )
 
@@ -187,10 +196,7 @@ class MembershipDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class MembershipRequestListView(generics.ListAPIView):
-    """
-    View to list all pending membership requests for a project.
-    Only accessible by the project owner.
-    """
+    
     serializer_class = MemberSerializer
     permission_classes = [IsAuthenticated, IsProjectOwner]
 
@@ -201,10 +207,7 @@ class MembershipRequestListView(generics.ListAPIView):
         return Membership.objects.filter(project=project, status=Membership.Status.PENDING)
 
 class MembershipRequestActionView(APIView):
-    """
-    View to approve or reject a membership request.
-    Only accessible by the project owner.
-    """
+    
     permission_classes = [IsAuthenticated, IsProjectOwner]
 
     def post(self, request, *args, **kwargs):
@@ -369,9 +372,7 @@ class DashboardStatsView(APIView):
 #documentation view
 
 class DocumentationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    Retrieve, update, or delete a specific documentation page.
-    """
+    
     serializer_class = DocumentationSerializer
     permission_classes = [IsAuthenticated]
     queryset = Documentation.objects.all() 
@@ -413,9 +414,7 @@ class DocumentationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVi
         send_doc_list_update_signal(project_id, 'Document deleted.')
 
 class DocumentationListCreateView(generics.ListCreateAPIView):
-    """
-    List all documentation pages for a project or create a new one.
-    """
+
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
@@ -448,16 +447,13 @@ class AIIndexProjectView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, project_id):
-        # Check permission
         try:
             project = Project.objects.get(id=project_id)
-            # Only members can re-index
             if not Membership.objects.filter(project=project, user=request.user, status=Membership.Status.APPROVED).exists():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         except Project.DoesNotExist:
             return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Run Indexing
         success, message = index_project(project_id)
         if success:
             return Response({'message': message})
@@ -472,14 +468,44 @@ class AIChatView(APIView):
         if not query:
             return Response({'error': 'Query is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check permission
         if not Membership.objects.filter(project_id=project_id, user=request.user, status=Membership.Status.APPROVED).exists():
              return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            # Get Answer from RAG Service
             answer = chat_with_project(project_id, query)
             return Response({'answer': answer})
         except Exception as e:
             print(f"AI Error: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# Alert Views
+class AlertListCreateView(generics.ListCreateAPIView):
+    serializer_class = AlertSerializer
+    permission_classes = [IsAuthenticated] 
+
+    def get_queryset(self):
+        project_id = self.kwargs['project_id']
+        return Alert.objects.filter(project_id=project_id)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['project'] = generics.get_object_or_404(Project, pk=self.kwargs['project_id'])
+        return context
+
+    def perform_create(self, serializer):
+        alert = serializer.save()
+        send_alert_signal(alert.project.id, "New alert raised.")
+
+class AlertDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Alert.objects.all()
+    serializer_class = AlertSerializer
+    permission_classes = [IsAuthenticated, IsEditorOrOwner] 
+
+    def perform_update(self, serializer):
+        alert = serializer.save()
+        send_alert_signal(alert.project.id, "Alert status updated.")
+
+    def perform_destroy(self, instance):
+        project_id = instance.project.id
+        instance.delete()
+        send_alert_signal(project_id, "Alert deleted.")

@@ -52,15 +52,12 @@ const getFileIcon = (fileName) => {
     const iconSize = 16;
     let iconName;
    
-    // Check for exact filename match
     iconName = iconMap[fileName.toLowerCase()];
-    // If no exact match, check by extension
     if (!iconName) {
         const ext = fileName.split('.').pop().toLowerCase();
         iconName = iconMap[ext];
     }
    
-    // Use default if still no match
     if (!iconName) {
         iconName = "default_file";
     }
@@ -118,7 +115,6 @@ const FileItemComponent = ({ file, onSelect, onDelete, depth, canEdit }) => (
             <span className="truncate text-white">{file.name}</span>
         </div>
         
-        {/* Only show delete if canEdit */}
         {canEdit && (
             <button
                 onClick={(e) => { e.stopPropagation(); onDelete('file', file.id); }}
@@ -152,7 +148,6 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
                     </span>
                 </div>
                 
-                {/* Only show delete if canEdit */}
                 {canEdit && (
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete('folder', folder.id); }}
@@ -249,7 +244,6 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey, canEdit }) => {
             <div className="flex items-center justify-between px-2 pt-2">
                 <h3 className="text-xs font-bold uppercase text-gray-400">EXPLORER</h3>
                 
-                {/* Only show buttons if canEdit is true */}
                 {canEdit && (
                     <div className="flex gap-1">
                         <button

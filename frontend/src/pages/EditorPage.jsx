@@ -5,6 +5,7 @@ import TopBar from '../components/TopBar';
 import ActivityBar from '../components/ActivityBar';
 import FileExplorer from '../components/FileExplorer';
 import ChatPanel from '../components/ChatPanel';
+import AlertsPanel from '../components/AlertsPanel';
 import axiosInstance from '../utils/axiosInstance';
 import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical } from 'react-icons/vsc';
 import AuthContext from '../context/AuthContext';
@@ -21,6 +22,7 @@ const PreviewPanel = ({ htmlCode, onClose }) => {
         window.open(url, '_blank');
         URL.revokeObjectURL(url);
     };
+
     return (
         <div className="h-full w-full flex flex-col bg-dark-card">
             <div className="flex-shrink-0 flex items-center justify-between bg-header-dark h-10 px-2 border-b border-gray-700">
@@ -83,7 +85,6 @@ const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, on
                     <VscClose size={16} />
                 </button>
             </div>
-
             <div className="flex-grow overflow-y-auto p-4 font-mono text-sm">
                 {lines.map((line, index) => (
                     <div key={index} className="whitespace-pre-wrap">
@@ -97,11 +98,9 @@ const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, on
                 ))}
                 <div ref={endOfTerminalRef} />
             </div>
-
             <p className="text-xs text-gray-500 italic px-4 pb-2">
             Note: Provide all required inputs here *before* clicking 'Run'. This is not a live terminal.
             </p>
-
             <div className="flex-shrink-0 border-t border-gray-700 p-2 bg-header-dark">
                 <form onSubmit={handleFormSubmit} className="flex items-center">
                     <span className="text-cyan-400 font-mono text-sm pl-2 pr-1"></span>
@@ -123,6 +122,7 @@ const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, on
 const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -132,6 +132,7 @@ const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
     return (
         <div className="relative" ref={menuRef}>
             <button
@@ -170,16 +171,20 @@ const EditorPage = () => {
     const [sidePanel, setSidePanel] = useState(null);
     const [terminalLines, setTerminalLines] = useState([]);
     const [currentTerminalInput, setCurrentTerminalInput] = useState('');
-    const [inputHistory, setInputHistory] = useState([]); 
+    const [inputHistory, setInputHistory] = useState([]);
     const [isExecuting, setIsExecuting] = useState(false);
     const [messages, setMessages] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
     const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
+    const [alertRefreshKey, setAlertRefreshKey] = useState(0);
     const [activeActivityBarTab, setActiveActivityBarTab] = useState('explorer');
     const [activeCollaboratorIds, setActiveCollaboratorIds] = useState([]);
+    const [hasUnreadAlerts, setHasUnreadAlerts] = useState(false);
+    const [hasUnreadChat, setHasUnreadChat] = useState(false);
     const socketRef = useRef(null);
     const saveTimeoutRef = useRef(null);
     const { authTokens, user } = useContext(AuthContext);
+
     const executableLanguages = ['python', 'javascript', 'cpp', 'java'];
     const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
@@ -187,15 +192,20 @@ const EditorPage = () => {
         axiosInstance.get(`/api/projects/${projectId}/`)
             .then(res => setProject(res.data))
             .catch(err => console.error("Failed to fetch project details", err));
+
         axiosInstance.get(`/api/projects/${projectId}/members/`)
             .then(res => setAllMembers(res.data))
             .catch(err => console.error("Failed to fetch all members", err));
+
         if (authTokens) {
             const socket = new WebSocket(
                 `${wsBaseUrl}/ws/project/${projectId}/?token=${authTokens.access}`
             );
+
             socketRef.current = socket;
+
             socket.onopen = () => console.log("WebSocket connection established");
+
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'code_update') {
@@ -210,52 +220,67 @@ const EditorPage = () => {
                     });
                 } else if (data.type === 'chat_message') {
                     setMessages(prevMessages => [...prevMessages, data]);
+                    
+                    if (activeActivityBarTab !== 'chat' && data.user_id !== user.user_id) {
+                        setHasUnreadChat(true);
+                    }
                 } else if (data.type === 'file_tree_update') {
                     setExplorerRefreshKey(prevKey => prevKey + 1);
+                }
+                else if (data.type === 'alert_update') {
+                    setAlertRefreshKey(prev => prev + 1);
+                    
+                    if (data.unresolved_count === 0) {
+                        setHasUnreadAlerts(false);
+                    } else if (activeActivityBarTab !== 'alerts') {
+                        setHasUnreadAlerts(true);
+                    }
                 }
                 else if (data.type === 'presence_update') {
                     setActiveCollaboratorIds(data.active_user_ids || []);
                 }
             };
+
             socket.onclose = () => console.log("WebSocket connection closed");
+
             return () => socket.close();
         }
     }, [projectId, authTokens]);
 
+    const handleTabChange = (tab) => {
+        setActiveActivityBarTab(tab);
+        if (tab === 'alerts') {
+            setHasUnreadAlerts(false);
+        }
+        if (tab === 'chat') {
+            setHasUnreadChat(false);
+        }
+    };
+
     const activeMembers = useMemo(() => {
-        return allMembers.filter(member => 
-            activeCollaboratorIds.includes(member.user) 
+        return allMembers.filter(member =>
+            activeCollaboratorIds.includes(member.user)
         );
     }, [allMembers, activeCollaboratorIds]);
 
-    // Determine if the current user has edit permissions
     const canEdit = useMemo(() => {
         if (!project || !user) return false;
-        if (project.owner === user.user_id) return true; // Owner always edits
+        if (project.owner === user.user_id) return true; 
         
         const myMembership = allMembers.find(m => m.user === user.user_id);
-        // Only ADMIN and EDITOR roles can edit
         return myMembership?.role === 'ADMIN' || myMembership?.role === 'EDITOR';
     }, [project, user, allMembers]);
 
     const enrichedMessages = useMemo(() => {
         return messages.map(msg => {
-            // Find the member from the allMembers list
-            // *** We are ASSUMING msg.user contains the user's ID.
-            // *** If not, you'll tell me what the field is called (e.g., msg.author_id)
-            const member = allMembers.find(m => m.user === msg.user);
+            const member = allMembers.find(m => m.user === msg.user_id);
             
             return {
             ...msg,
-            // Add a 'username' field, falling back to 'Unknown'
-            username: member?.username || 'Unknown User' 
-            // You can also fall back to the email if you want:
-            // username: member?.username || msg.email || 'Unknown'
+            username: member?.first_name || member?.email || msg.username || 'Unknown User'
             };
         });
     }, [messages, allMembers]);
-  
-  
 
     const getLanguageFromFile = (fileName) => {
         const extension = fileName.split('.').pop();
@@ -304,6 +329,7 @@ const EditorPage = () => {
                 setSidePanel(null);
             }
         }
+
         if (fileToClose?.language === 'html' && sidePanel === 'preview') {
             setSidePanel(null);
         }
@@ -314,6 +340,7 @@ const EditorPage = () => {
             setOpenFiles(prevFiles =>
                 prevFiles.map(f => f.id === activeFileId ? { ...f, content: value } : f)
             );
+
             if (socketRef.current?.readyState === WebSocket.OPEN) {
                 socketRef.current.send(JSON.stringify({
                     'type': 'code_update',
@@ -321,6 +348,7 @@ const EditorPage = () => {
                     'fileId': activeFileId
                 }));
             }
+
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
             const valueToSave = value;
             const fileIdToSave = activeFileId;
@@ -336,7 +364,6 @@ const EditorPage = () => {
 
     const handleTerminalSubmit = () => {
         if (currentTerminalInput.trim() === '') return;
-
         setTerminalLines(prev => [...prev, { type: 'input', content: currentTerminalInput }]);
         
         setInputHistory(prev => [...prev, currentTerminalInput]);
@@ -347,18 +374,16 @@ const EditorPage = () => {
     const handleRunCode = async () => {
         const activeFile = openFiles.find(f => f.id === activeFileId);
         if (!activeFile) return;
-
         setSidePanel('output');
         setIsExecuting(true);
         setTerminalLines([{ type: 'output', content: 'Executing...' }]);
         
         const stdin = inputHistory.join('\n');
-
         try {
             const response = await axiosInstance.post('/api/execute/', {
                 language: activeFile.language,
                 code: activeFile.content,
-                input: stdin 
+                input: stdin
             });
             
             const { stdout, stderr, compile_output, message, status } = response.data;
@@ -369,7 +394,6 @@ const EditorPage = () => {
             if (message) result += `Message:\n${message}`;
             
             setTerminalLines([{ type: 'output', content: result || `Execution finished with status: ${status?.description || 'unknown'}` }]);
-
         } catch (error) {
             setTerminalLines([{ type: 'output', content: "An error occurred while executing the code." }]);
         }
@@ -401,10 +425,12 @@ const EditorPage = () => {
             <div className="flex flex-grow overflow-hidden">
                 <ActivityBar
                     activeTab={activeActivityBarTab}
-                    onTabChange={setActiveActivityBarTab}
+                    onTabChange={handleTabChange} 
                     onRunCode={handleRunCode}
                     isRunButtonEnabled={isRunButtonEnabled}
                     isExecuting={isExecuting}
+                    hasUnreadAlerts={hasUnreadAlerts}
+                    hasUnreadChat={hasUnreadChat}
                 />
                 <div className="w-80 flex-shrink-0 bg-dark-card border-r border-gray-700">
                     {activeActivityBarTab === 'explorer' && (
@@ -414,16 +440,15 @@ const EditorPage = () => {
                         <ChatPanel messages={enrichedMessages} onSendMessage={handleSendMessage} currentUser={user} />
                     )}
                     
-                    {/* 2. ADD THIS BLOCK */}
                     {activeActivityBarTab === 'ai_chat' && (
                         <AIChatPanel projectId={projectId} />
                     )}
-
                     {activeActivityBarTab === 'alerts' && (
-                        <div className="p-4">
-                            <h3 className="text-lg font-semibold mb-4">Alerts</h3>
-                            <p className="text-gray-400">No new alerts.</p>
-                        </div>
+                        <AlertsPanel
+                            projectId={projectId}
+                            canEdit={canEdit}
+                            refreshKey={alertRefreshKey}
+                        />
                     )}
                 </div>
                 <main className="flex-1 flex flex-col overflow-hidden">

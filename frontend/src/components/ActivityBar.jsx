@@ -1,10 +1,9 @@
 // vertical activity bar on the left side of the editor page.
 import React from 'react';
-// Updated imports to include FaRobot
 import { VscFiles, VscCommentDiscussion, VscBell, VscDebugStart, VscGear, VscAccount } from 'react-icons/vsc';
-import { FaRobot } from 'react-icons/fa'; // Added FaRobot import
+import { FaRobot } from 'react-icons/fa';
 
-const ActivityBar = ({ activeTab, onTabChange, onRunCode, isRunButtonEnabled, isExecuting }) => {
+const ActivityBar = ({ activeTab, onTabChange, onRunCode, isRunButtonEnabled, isExecuting, hasUnreadAlerts, hasUnreadChat }) => {
     return (
         <div className="flex flex-col items-center justify-between w-12 bg-black border-r border-gray-800 py-2 text-gray-300">
             <div className="flex flex-col items-center gap-4">
@@ -24,9 +23,12 @@ const ActivityBar = ({ activeTab, onTabChange, onRunCode, isRunButtonEnabled, is
                 >
                     {activeTab === 'chat' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white"></div>}
                     <VscCommentDiscussion size={22} />
+                    
+                    {hasUnreadChat && (
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-black"></span>
+                    )}
                 </button>
 
-                {/* Added AI Chat Button */}
                 <button
                     onClick={() => onTabChange('ai_chat')}
                     className={`p-2 rounded relative hover:bg-gray-700 ${activeTab === 'ai_chat' ? 'text-[var(--primary-purple)]' : ''}`}
@@ -39,10 +41,14 @@ const ActivityBar = ({ activeTab, onTabChange, onRunCode, isRunButtonEnabled, is
                 <button
                     onClick={() => onTabChange('alerts')}
                     className={`p-2 rounded relative hover:bg-gray-700 ${activeTab === 'alerts' ? 'text-white' : ''}`}
-                    title="Alerts (Placeholder)"
+                    title="Alerts"
                 >
                     {activeTab === 'alerts' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white"></div>}
                     <VscBell size={22} />
+                    
+                    {hasUnreadAlerts && (
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-black"></span>
+                    )}
                 </button>
 
                 <button

@@ -261,7 +261,6 @@ const DocumentationEditorPage = () => {
                 </div>
             </div>
 
-            {/* Editor */}
             <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-600">
                  <ReactQuill
                     theme="snow"

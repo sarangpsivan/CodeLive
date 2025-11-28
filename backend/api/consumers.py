@@ -16,9 +16,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
 
-        # --- ADD THIS BLOCK: Check Permissions on Connect ---
         self.can_edit = await self.check_edit_permission(self.user.id, self.project_id)
-        # ----------------------------------------------------
 
         if self.room_group_name not in active_users_in_project:
             active_users_in_project[self.room_group_name] = set()
@@ -27,7 +25,6 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
         
-        # Send the permission status to the frontend client so it knows to lock the UI
         await self.send(text_data=json.dumps({
             'type': 'permission_status',
             'can_edit': self.can_edit
@@ -77,7 +74,6 @@ class ProjectConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-    # Handler for broadcasting code updates
     async def broadcast_code(self, event):
         await self.send(text_data=json.dumps({
             'type': 'code_update',
@@ -85,7 +81,6 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             'fileId': event.get('fileId')
         }))
 
-    # Handler for broadcasting chat messages
     async def broadcast_chat_message(self, event):
         await self.send(text_data=json.dumps({
             'type': 'chat_message',
@@ -94,14 +89,12 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             'user_id': event.get('user_id')
         }))
 
-    # Handler for file tree updates
     async def file_tree_update(self, event):
         await self.send(text_data=json.dumps({
             'type': 'file_tree_update',
             'message': event['message']
         }))
 
-    # Handler for collaborator updates
     async def collaborator_update(self, event):
         removed_user_id = event.get('removed_user_id')
         
@@ -114,13 +107,11 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             'message': event['message']
         }))
 
-    # Handler for the join request badge notification
     async def new_join_request(self, event):
         await self.send(text_data=json.dumps({
             'type': 'new_join_request'
         }))
 
-    # Presence Helper Function
     async def broadcast_presence(self):
         active_ids = list(active_users_in_project.get(self.room_group_name, set()))
         await self.channel_layer.group_send(
@@ -131,14 +122,12 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             }
         )
     
-    # Handler for Presence Updates
     async def presence_update(self, event):
         await self.send(text_data=json.dumps({
             'type': 'presence_update',
             'active_user_ids': event['active_user_ids']
         }))
-
-    # Handler for doc content updates (after save) 
+ 
     async def doc_content_update(self, event):
          print(f"CONSUMER: Received doc_content_update from channel layer for doc {event.get('documentId')}. Sending via WebSocket.")
          await self.send(text_data=json.dumps({
@@ -156,7 +145,13 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             'message': event.get('message', 'Document list updated')
         }))
 
-    # Save chat messages to database
+    async def alert_update(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'alert_update',
+            'message': event['message'],
+            'unresolved_count': event['unresolved_count'] 
+        }))
+
     @database_sync_to_async
     def save_chat_message(self, message, user):
         try:

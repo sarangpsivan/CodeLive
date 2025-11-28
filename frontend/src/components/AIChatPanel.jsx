@@ -47,11 +47,11 @@ const AIChatPanel = ({ projectId }) => {
     };
 
     return (
-        <div className="w-full bg-black border-l border-gray-800 flex flex-col h-full font-sans">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1F242A]">
-                <div className="flex items-center gap-2 text-white font-bold">
-                    <FaRobot className="text-[var(--primary-purple)]" />
+        <div className="w-full bg-black border-l border-gray-800 flex flex-col h-full font-sans text-white">
+            
+            <div className="h-14 px-4 border-b border-gray-800 flex justify-between items-center bg-[#1F242A] flex-shrink-0">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <FaRobot className="text-[var(--primary-purple)]" size={20} />
                     AI Assistant
                 </div>
                 <button 
@@ -65,7 +65,6 @@ const AIChatPanel = ({ projectId }) => {
                 </button>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-grow p-4 overflow-y-auto space-y-4 scrollbar-hide">
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -89,8 +88,7 @@ const AIChatPanel = ({ projectId }) => {
                 )}
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 border-t border-gray-800 bg-[#1F242A]">
+            <div className="p-3 border-t border-gray-800 bg-[#1F242A] flex-shrink-0">
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                     <input
                         type="text"
