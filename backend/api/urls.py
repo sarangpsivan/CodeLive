@@ -15,7 +15,8 @@ from .views import MembershipRequestListView, MembershipRequestActionView
 from .views import (
     DashboardStatsView,
     DocumentationListCreateView, 
-    DocumentationRetrieveUpdateDestroyView 
+    DocumentationRetrieveUpdateDestroyView,
+    ProjectPreviewView
 )
 from .views import AIIndexProjectView, AIChatView
 from .views import AlertListCreateView, AlertDetailView
@@ -45,4 +46,5 @@ urlpatterns = [
     path("projects/<int:project_id>/ai/chat/", AIChatView.as_view(), name="ai-chat"),
     path("projects/<int:project_id>/alerts/", AlertListCreateView.as_view(), name="project-alerts"),
     path("alerts/<int:pk>/", AlertDetailView.as_view(), name="alert-detail"),
+    path("projects/<int:project_id>/preview/<path:file_path>", ProjectPreviewView.as_view(), name="project-preview"),
 ]

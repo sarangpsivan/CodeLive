@@ -11,31 +11,54 @@ import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical, VscTerminal } 
 import AuthContext from '../context/AuthContext';
 import AIChatPanel from '../components/AIChatPanel';
 
-const PreviewPanel = ({ htmlCode, onClose }) => {
-    const iframeRef = useRef(null);
-    const reloadIframe = () => {
-        if (iframeRef.current) iframeRef.current.srcdoc = htmlCode;
-    };
+const PreviewPanel = ({ projectId, token, activeFileName, content, onClose }) => {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const [iframeContent, setIframeContent] = useState('');
+
+    useEffect(() => {
+        fetch(`${apiBaseUrl}/api/projects/${projectId}/preview/index.html?token=${token}`)
+            .catch(err => console.log("Preview handshake error:", err));
+    }, [projectId, token, apiBaseUrl]);
+
+    useEffect(() => {
+        if (!content) return;
+
+        if (activeFileName && activeFileName.endsWith('.html')) {
+            const baseUrl = `${apiBaseUrl}/api/projects/${projectId}/preview/`;
+            
+            let processedContent = content;
+            const baseTag = `<base href="${baseUrl}">`;
+
+            if (processedContent.includes('<head>')) {
+                processedContent = processedContent.replace('<head>', `<head>${baseTag}`);
+            } else if (processedContent.includes('<html>')) {
+                processedContent = processedContent.replace('<html>', `<html><head>${baseTag}</head>`);
+            } else {
+                processedContent = `${baseTag}${processedContent}`;
+            }
+            
+            setIframeContent(processedContent);
+        } else {
+            setIframeContent(`<pre style="color:white;">Preview not available for ${activeFileName}</pre>`);
+        }
+    }, [content, activeFileName, projectId, apiBaseUrl]);
+
     const openInNewTab = () => {
-        const blob = new Blob([htmlCode], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
+        const url = `${apiBaseUrl}/api/projects/${projectId}/preview/${activeFileName || 'index.html'}?token=${token}`;
         window.open(url, '_blank');
-        URL.revokeObjectURL(url);
     };
 
     return (
-        <div className="h-full w-full flex flex-col bg-dark-card">
-            <div className="flex-shrink-0 flex items-center justify-between bg-[#1F242A] h-10 px-2 border-b border-gray-700">
-                <div className="flex items-center gap-2">
-                    <button onClick={reloadIframe} title="Refresh" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
-                        <VscRefresh size={14} />
-                    </button>
-                    <div className="bg-black/50 text-gray-300 text-xs px-2 py-1 rounded w-64 truncate border border-gray-700">
-                        https://preview.codelive.app
+        <div className="h-full w-full flex flex-col bg-black border-l border-gray-800 font-sans">
+            <div className="h-10 px-2 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
+                <div className="flex items-center gap-2 flex-grow mr-2">
+                    <div className="bg-black/50 text-gray-300 text-xs px-2 py-1 rounded w-full truncate border border-gray-700 font-mono">
+                        Live Preview: {activeFileName}
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button onClick={openInNewTab} title="Open in new tab" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
+                
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={openInNewTab} title="Open in new tab (Saved Version)" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
                         <VscLinkExternal size={14} />
                     </button>
                     <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
@@ -43,12 +66,12 @@ const PreviewPanel = ({ htmlCode, onClose }) => {
                     </button>
                 </div>
             </div>
+
             <div className="flex-grow bg-white">
                 <iframe
-                    ref={iframeRef}
-                    srcDoc={htmlCode}
+                    srcDoc={iframeContent} 
                     title="Live Preview"
-                    sandbox="allow-scripts"
+                    sandbox="allow-scripts allow-same-origin allow-forms"
                     width="100%"
                     height="100%"
                     style={{ border: 'none' }}
@@ -524,8 +547,14 @@ const EditorPage = () => {
                         </div>
                         {sidePanel && (
                             <div className="w-1/2 border-l border-gray-700">
-                                {sidePanel === 'preview' && activeFile && (
-                                    <PreviewPanel htmlCode={activeFile.content} onClose={() => setSidePanel(null)} />
+                                {sidePanel === 'preview' && (
+                                   <PreviewPanel 
+                                       projectId={projectId} 
+                                       token={authTokens?.access}
+                                       activeFileName={activeFile?.name}
+                                       content={activeFile?.content} 
+                                       onClose={() => setSidePanel(null)} 
+                                   />
                                 )}
                                 {sidePanel === 'output' && (
                                     <SimulatedTerminalPanel

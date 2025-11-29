@@ -1,3 +1,9 @@
+import mimetypes
+from django.http import HttpResponse
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import AuthenticationFailed
+from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import generics, status
@@ -511,3 +517,73 @@ class AlertDetailView(generics.RetrieveUpdateDestroyAPIView):
         project_id = instance.project.id
         instance.delete()
         send_alert_signal(project_id, "Alert deleted.")
+
+# preview file view
+
+class ProjectPreviewView(APIView):
+    authentication_classes = [] 
+    permission_classes = []     
+
+    @method_decorator(xframe_options_exempt)
+    def get(self, request, project_id, file_path):
+        token = request.GET.get('token')
+        
+        if not token:
+            token = request.COOKIES.get('preview_token')
+
+        if not token:
+            return HttpResponse("Unauthorized: No token provided", status=401)
+        
+        try:
+            validated_token = JWTAuthentication().get_validated_token(token)
+            user = JWTAuthentication().get_user(validated_token)
+        except (AuthenticationFailed, Exception):
+            return HttpResponse("Unauthorized: Invalid token", status=401)
+
+        if not Membership.objects.filter(project_id=project_id, user=user, status=Membership.Status.APPROVED).exists():
+            return HttpResponse("Forbidden: You are not a member of this project", status=403)
+
+        path_parts = file_path.strip('/').split('/')
+        file_name = path_parts.pop() 
+        folder_names = path_parts    
+
+        try:
+            current_folder = Folder.objects.filter(project_id=project_id, parent__isnull=True).first()
+            
+            if not current_folder:
+                return HttpResponse("Project Root not found", status=404)
+
+            for folder_name in folder_names:
+                current_folder = Folder.objects.get(
+                    project_id=project_id, 
+                    parent=current_folder, 
+                    name=folder_name
+                )
+
+            file = File.objects.get(
+                project_id=project_id,
+                folder=current_folder,
+                name=file_name
+            )
+
+            mime_type, _ = mimetypes.guess_type(file.name)
+            if not mime_type:
+                mime_type = 'text/plain' 
+
+            response = HttpResponse(file.content, content_type=mime_type)
+            response['X-Content-Type-Options'] = 'nosniff' 
+            
+            response.set_cookie(
+                'preview_token', 
+                token, 
+                max_age=3600, 
+                httponly=True, 
+                samesite='Lax' 
+            )
+            return response
+
+        except (Folder.DoesNotExist, File.DoesNotExist):
+            return HttpResponse(f"File not found: {file_path}", status=404)
+        except Exception as e:
+            print(f"Preview Error: {e}")
+            return HttpResponse("Internal Server Error", status=500)
