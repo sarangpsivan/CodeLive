@@ -587,3 +587,14 @@ class ProjectPreviewView(APIView):
         except Exception as e:
             print(f"Preview Error: {e}")
             return HttpResponse("Internal Server Error", status=500)
+        
+
+# account deletion view
+
+class UserDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        user.delete()
+        return Response({"message": "User account deleted successfully"}, status=status.HTTP_204_NO_CONTENT)

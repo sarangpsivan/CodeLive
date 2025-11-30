@@ -11,6 +11,7 @@ import SocialAuthCallback from './pages/SocialAuthCallback';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import JoinPage from './pages/JoinPage';
 import DocumentationEditorPage from './pages/DocumentationEditorPage';
+import ProfilePage from './pages/ProfilePage';
 
 const ProtectedLayout = () => {
     return (
@@ -37,6 +38,7 @@ function App() {
       <Route element={<PrivateRoute />}>
         <Route element={<ProtectedLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/project/:projectId" element={<ProjectDetailPage />} />
         </Route>
         <Route path="/project/:projectId/editor" element={<EditorPage />} />

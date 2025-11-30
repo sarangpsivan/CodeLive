@@ -29,7 +29,7 @@ const DashboardPage = () => {
             .then(res => {
                 setStats({ 
                     collaborators: res.data.total_collaborators,
-                    files: res.data.total_files
+                    files: res.data.total_files 
                 });
             })
             .catch(err => console.error("Failed to fetch stats", err));
@@ -116,30 +116,35 @@ const DashboardPage = () => {
                 isOpen={isJoinModalOpen}
                 onClose={() => setIsJoinModalOpen(false)}
             />
-            <main className="flex flex-col lg:flex-row gap-8 p-8 font-sans h-full">
-                <aside className="w-full lg:w-80 bg-[var(--dark-card)] rounded-xl p-6 border border-gray-800 flex flex-col flex-shrink-0">
-                    <h2 className="text-lg font-semibold mb-6 px-3 text-white">Your Projects</h2>
-                    <nav className="flex-grow space-y-2">
+            <main className="flex flex-col lg:flex-row gap-8 p-8 font-sans h-full overflow-hidden">
+                
+                <aside className="w-full lg:w-80 bg-[var(--dark-card)] rounded-xl p-6 border border-gray-800 flex flex-col flex-shrink-0 h-full overflow-hidden">
+                    <h2 className="text-lg font-semibold mb-6 px-3 text-white flex-shrink-0">Your Projects</h2>
+                    
+                    <nav className="flex-grow space-y-2 overflow-y-auto scrollbar-hide">
                         {projects.length > 0 ? (
                             projects.map(project => <ProjectCard key={project.id} project={project} />)
                         ) : (
                             <p className="px-3 text-sm text-gray-400">No projects yet.</p>
                         )}
                     </nav>
-                    <button onClick={() => setIsModalOpen(true)} className="w-full mt-6 py-3 flex items-center justify-center bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition-colors">
+
+                    <button onClick={() => setIsModalOpen(true)} className="w-full mt-6 py-3 flex items-center justify-center bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition-colors flex-shrink-0">
                         <FaPlus className="mr-2" /> Create New Project
                     </button>
                 </aside>
 
-                <section className="flex-1 overflow-y-auto">
+                <section className="flex-1 overflow-y-auto scrollbar-hide">
                     <div className="mb-10">
                         <h1 className="text-4xl font-bold text-white">Welcome back, <span className="text-[var(--accent-lavender)]">{user?.first_name || user?.username}</span>!</h1>
                         <p className="text-gray-400 mt-2">Ready to build something amazing? Create a new project or join an existing one.</p>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                         <ActionCard icon={<FaPlus />} title="Create New Project" description="Start a new project from scratch with our modern templates." buttonText="Create Project" primary onClick={() => setIsModalOpen(true)} />
                         <ActionCard icon={<FaUserFriends />} title="Join Project" description="Collaborate on existing projects with your team." buttonText="Join Project" onClick={() => setIsJoinModalOpen(true)} />
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <StatCard value={projects.length} label="Active Projects" />
                         <StatCard value={stats.collaborators} label="Collaborators" />
