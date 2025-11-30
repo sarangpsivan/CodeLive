@@ -28,6 +28,7 @@ const TopBar = ({ projectId, projectTitle, activeFileName, activeMembers = [] })
                         </span>
                     </div>
                 </div>
+                
                 <div className="flex-grow flex justify-center items-center text-sm min-w-0 px-4 gap-2">
                     <div className="flex-shrink-0 bg-gray-700 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                         CodeLive Editor
@@ -40,17 +41,17 @@ const TopBar = ({ projectId, projectTitle, activeFileName, activeMembers = [] })
                         )}
                     </div>
                 </div>
+
                 <div className="flex items-center gap-4">
                     <div 
-                        className="flex items-center -space-x-2 cursor-pointer group relative"
-                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center -space-x-2 cursor-pointer group relative hover:opacity-80 transition"
+                        onClick={() => setIsModalOpen(!isModalOpen)}
                         title="View active collaborators"
                     >
                         {visibleCollaborators.map((collab) => (
                             <div 
                                 key={collab.id} 
                                 className="w-7 h-7 bg-[var(--primary-purple)] rounded-full flex items-center justify-center text-xs font-bold border-2 border-dark-card"
-                                title={collab.first_name || collab.email}
                             >
                                 {(collab.first_name || collab.email).charAt(0).toUpperCase()}
                             </div>
@@ -61,8 +62,10 @@ const TopBar = ({ projectId, projectTitle, activeFileName, activeMembers = [] })
                             </div>
                         )}
                     </div>
+                    
                 </div>
             </div>
+
             <ActiveCollaboratorsModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

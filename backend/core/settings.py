@@ -1,16 +1,27 @@
 from pathlib import Path
 import os
 import dj_database_url
+import warnings
 from dotenv import load_dotenv
+
 load_dotenv()
+
+# SILENCE LIBRARY WARNINGS
+
+warnings.filterwarnings("ignore", message=".*app_settings.USERNAME_REQUIRED is deprecated.*")
+warnings.filterwarnings("ignore", message=".*app_settings.EMAIL_REQUIRED is deprecated.*")
+warnings.filterwarnings("ignore", message=".*app_settings.AUTHENTICATION_METHOD is deprecated.*")
 
 from pathlib import Path
 from datetime import timedelta
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
@@ -113,7 +124,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# FROM HERE CUSTOM PROJECT SETTINGS STARTS
+
+# ================================================================= #
+# CUSTOM PROJECT SETTINGS
+# ================================================================= #
 
 SITE_ID = 1
 
@@ -159,6 +173,10 @@ SOCIALACCOUNT_PROVIDERS = {
 
 # Allauth Redirects
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+ALLAUTH_HEADLESS_CLIENT_URLS = {
+    "google": f"{FRONTEND_URL}/social-auth-callback",
+    "github": f"{FRONTEND_URL}/social-auth-callback",
+}
 
 # dj-rest-auth Settings to use JWT
 REST_AUTH = {
@@ -215,8 +233,8 @@ CHANNEL_LAYERS = {
     },
 }
 
-
 ACCOUNT_ADAPTER = 'api.adapters.CustomAccountAdapter'
+
 SOCIALACCOUNT_ADAPTER = 'api.adapters.CustomSocialAccountAdapter'
 
 JUDGE0_API_KEY = os.environ.get('JUDGE0_API_KEY')
