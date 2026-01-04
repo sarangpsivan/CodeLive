@@ -80,25 +80,14 @@ const ProjectDetailPage = () => {
 
     useEffect(() => {
         let socket = null;
-        let reconnectTimeoutId = null;
 
         const connectWebSocket = () => {
-            if (reconnectTimeoutId) {
-                clearTimeout(reconnectTimeoutId);
-                reconnectTimeoutId = null;
-            }
-
             const currentAuthTokens = localStorage.getItem('authTokens')
                 ? JSON.parse(localStorage.getItem('authTokens'))
                 : null;
-            const currentUser = currentAuthTokens ? jwtDecode(currentAuthTokens.access) : null;
+            
+            if (!currentAuthTokens) return;
 
-            if (!currentAuthTokens || !currentUser) {
-                console.log("WebSocket connection skipped: No valid auth tokens found in localStorage.");
-                return;
-            }
-
-            console.log("Attempting WebSocket connection (Project)...");
             socket = new WebSocket(
                 `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`
             );
@@ -109,94 +98,58 @@ const ProjectDetailPage = () => {
 
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                console.log("ProjectDetail WS Message Received:", data); 
-                
+
                 if (data.type === 'presence_update') {
                     setActiveMembers(data.active_user_ids);
-                }
-                
-                if (data.type === 'collaborator_update') {
-                    console.log("Received 'collaborator_update' signal:", data);
-                    
-                    fetchData();
-                    
-                    if (data.removed_user_id) {
-                        const removedId = String(data.removed_user_id);
-                        const currentUserId = String(user.user_id);
-
-                        console.log(`Checking for redirect: removedId is '${removedId}', currentUserId is '${currentUserId}'`);
-
-                        if (removedId === currentUserId) {
-                            console.log("IDs match! Redirecting user.");
-                            alert("You have been removed from this project.");
-                            navigate('/dashboard');
-                        }
-                    }
                 }
 
                 if (data.type === 'new_join_request') {
                     setRequestCount(prev => prev + 1);
                 }
 
-                if (data.type === 'doc_list_update') {
-                    console.log("Received doc_list_update signal, refreshing data...");
+                
+                if (data.type === 'collaborator_update') {
                     fetchData();
+                    if (data.removed_user_id && String(data.removed_user_id) === String(user?.user_id)) {
+                        alert("You have been removed from this project.");
+                        navigate('/dashboard');
+                    }
                 }
                 
+                if (data.type === 'doc_list_update') {
+                    fetchData();
+                }
+
                 if (data.type === 'doc_content_update') {
-                    console.log(`ProjectDetail received doc_content_update for docId: ${data.documentId}`); 
                     setDocuments(prevDocs => {
-                        console.log("ProjectDetail updating documents state...");
-                        const updatedDocs = prevDocs.map(doc => {
-                            if (doc.id === data.documentId) {
-                                console.log(`ProjectDetail found matching doc: ${doc.id}, updating title to: ${data.title}`);
-                                return {
-                                      ...doc,
-                                      title: data.title ?? doc.title,
-                                      updated_at: data.updated_at, 
-                                      last_updated_by_username: data.updater_username
-                                  };
-                            }
-                            return doc;
-                        });
-                        return updatedDocs;
+                       return prevDocs.map(doc => {
+                           if (doc.id === data.documentId) {
+                               return {
+                                     ...doc,
+                                     title: data.title ?? doc.title,
+                                     updated_at: data.updated_at, 
+                                     last_updated_by_username: data.updater_username
+                                 };
+                           }
+                           return doc;
+                       });
                     });
                 }
             };
 
-            socket.onerror = (error) => {
-                console.error('WebSocket error (Project):', error);
-            };
-
-            socket.onclose = (event) => {
-                console.log("WebSocket connection closed (Project).", event.code, event.reason);
-                const latestTokens = localStorage.getItem('authTokens');
-                if (event.code !== 1000 && latestTokens) {
-                    console.log("Attempting WebSocket reconnect (Project) in 5 seconds...");
-                    reconnectTimeoutId = setTimeout(connectWebSocket, 5000);
-                } else if (!latestTokens) {
-                    console.log("WebSocket closed and user logged out, not reconnecting.");
-                }
+            socket.onclose = () => {
+                console.log("WebSocket connection closed (Project).");
             };
         };
 
-        const initialTokens = localStorage.getItem('authTokens');
-        if (initialTokens) {
-            connectWebSocket();
-        } else {
-            console.log("Skipping initial WebSocket connection: User not logged in.");
-        }
+        connectWebSocket();
 
         return () => {
-            if (reconnectTimeoutId) {
-                clearTimeout(reconnectTimeoutId);
-            }
             if (socket) {
-                console.log("Closing WebSocket connection (Project) due to component unmount/re-render.");
-                socket.close(1000);
+                socket.close();
             }
         };
-    }, [projectId, user?.user_id, navigate]);
+    }, [projectId]);
 
     const handleNewDocument = async () => {
         try {
