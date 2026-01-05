@@ -16,7 +16,8 @@ from channels.layers import get_channel_layer
 import requests
 import os
 import time
-
+import re
+from .authentication import CodeLivePreviewAuthentication
 from .models import Project, Membership, Folder, File, Documentation, Alert
 from .serializers import (
     UserSerializer, ProjectSerializer, MyTokenObtainPairSerializer,
@@ -521,69 +522,103 @@ class AlertDetailView(generics.RetrieveUpdateDestroyAPIView):
 # preview file view
 
 class ProjectPreviewView(APIView):
-    authentication_classes = [] 
-    permission_classes = []     
+    authentication_classes = [CodeLivePreviewAuthentication] 
+    permission_classes = [IsAuthenticated]
 
     @method_decorator(xframe_options_exempt)
     def get(self, request, project_id, file_path):
-        token = request.GET.get('token')
-        
-        if not token:
-            token = request.COOKIES.get('preview_token')
-
-        if not token:
-            return HttpResponse("Unauthorized: No token provided", status=401)
-        
-        try:
-            validated_token = JWTAuthentication().get_validated_token(token)
-            user = JWTAuthentication().get_user(validated_token)
-        except (AuthenticationFailed, Exception):
-            return HttpResponse("Unauthorized: Invalid token", status=401)
-
-        if not Membership.objects.filter(project_id=project_id, user=user, status=Membership.Status.APPROVED).exists():
+        # 1. Check Membership
+        if not Membership.objects.filter(project_id=project_id, user=request.user, status=Membership.Status.APPROVED).exists():
             return HttpResponse("Forbidden: You are not a member of this project", status=403)
 
+        # 2. Resolve File
         path_parts = file_path.strip('/').split('/')
         file_name = path_parts.pop() 
         folder_names = path_parts    
 
         try:
             current_folder = Folder.objects.filter(project_id=project_id, parent__isnull=True).first()
-            
-            if not current_folder:
-                return HttpResponse("Project Root not found", status=404)
+            if not current_folder: return HttpResponse("Root not found", status=404)
 
             for folder_name in folder_names:
-                current_folder = Folder.objects.get(
-                    project_id=project_id, 
-                    parent=current_folder, 
-                    name=folder_name
-                )
+                current_folder = Folder.objects.get(project_id=project_id, parent=current_folder, name=folder_name)
 
-            file = File.objects.get(
-                project_id=project_id,
-                folder=current_folder,
-                name=file_name
-            )
+            file = File.objects.get(project_id=project_id, folder=current_folder, name=file_name)
 
+            # 3. Determine Mime Type (Force HTML for .html extensions)
             mime_type, _ = mimetypes.guess_type(file.name)
-            if not mime_type:
-                mime_type = 'text/plain' 
+            if file.name.lower().endswith('.html'):
+                mime_type = 'text/html'
+            elif not mime_type:
+                mime_type = 'text/plain'
 
-            response = HttpResponse(file.content, content_type=mime_type)
-            response['X-Content-Type-Options'] = 'nosniff' 
+            # 4. READ CONTENT (Robust Method)
+            content_str = ""
+            try:
+                f = file.content
+                if hasattr(f, 'open'):
+                    f.open()
+                    content_bytes = f.read()
+                else:
+                    content_bytes = f
+                
+                # Try to decode; if it fails (images), return raw bytes
+                if isinstance(content_bytes, bytes):
+                    try:
+                        content_str = content_bytes.decode('utf-8')
+                    except UnicodeDecodeError:
+                        return HttpResponse(content_bytes, content_type=mime_type)
+                else:
+                    content_str = str(content_bytes)
+            except Exception as e:
+                print(f"DEBUG: Error reading file content: {e}")
+                return HttpResponse("Error reading file", status=500)
+
+            # 5. INJECTION LOGIC
+            token_param = request.GET.get('token')
             
-            response.set_cookie(
-                'preview_token', 
-                token, 
-                max_age=3600, 
-                httponly=True, 
-                samesite='Lax' 
-            )
+            if mime_type == 'text/html' and token_param:
+                print(f"DEBUG: Injecting token into {file.name}...")
+                
+                # A. Inject Meta Tag to fix Referer stripping (Fixes the "Referer present but no token" error)
+                meta = '<meta name="referrer" content="unsafe-url">'
+                if '<head>' in content_str:
+                    content_str = content_str.replace('<head>', f'<head>\n{meta}', 1)
+                else:
+                    content_str = meta + content_str
+
+                # B. Inject Token into Links
+                # Matches href="...", src='...', href=...
+                link_pattern = r'(?i)\b(href|src)\s*=\s*(["\']?)([^"\'\s>]+)\2'
+                
+                def replace_link(match):
+                    attr, quote, url = match.groups()
+                    if url.startswith(('http', '//', '#', 'data:', 'mailto:')): return match.group(0)
+                    
+                    sep = '&' if '?' in url else '?'
+                    # Ensure we have quotes for the new attribute
+                    q = quote if quote else '"'
+                    
+                    new_link = f'{attr}={q}{url}{sep}token={token_param}{q}'
+                    print(f"DEBUG: Rewrote {url} -> {new_link}")
+                    return new_link
+
+                try:
+                    content_str = re.sub(link_pattern, replace_link, content_str)
+                except Exception as e:
+                    print(f"DEBUG: Regex Error: {e}")
+
+            response = HttpResponse(content_str, content_type=mime_type)
+            response['X-Content-Type-Options'] = 'nosniff'
+            # Disable Cache to ensure browser gets the injected version
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+
+            # Set Cookie as fallback
+            if token_param:
+                response.set_cookie('preview_access_token', token_param, max_age=300, httponly=True, samesite='None', secure=True)
+
             return response
 
-        except (Folder.DoesNotExist, File.DoesNotExist):
-            return HttpResponse(f"File not found: {file_path}", status=404)
         except Exception as e:
             print(f"Preview Error: {e}")
             return HttpResponse("Internal Server Error", status=500)
