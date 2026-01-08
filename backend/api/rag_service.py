@@ -72,7 +72,7 @@ def format_docs(docs):
 def chat_with_project(project_id, user_query, current_file_context=None):
     try:
         llm = ChatGroq(
-            model="llama3-8b-8192", 
+            model="llama-3.1-8b-instant", 
             api_key=settings.GROQ_API_KEY,
             temperature=0.3
         )

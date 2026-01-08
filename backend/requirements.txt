@@ -176,4 +176,4 @@ zipp==3.23.0
 zope.interface==8.0.1
 zstandard==0.25.0
 groq==0.8.0
-langchain-groq
+langchain-groq==1.1.1
