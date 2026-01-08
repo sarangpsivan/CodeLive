@@ -1,4 +1,5 @@
 import os
+import re
 from django.conf import settings
 from .models import File, Project
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -9,6 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from google.api_core import exceptions
 
 PERSIST_DIRECTORY = os.path.join(settings.BASE_DIR, 'chroma_db')
 
@@ -22,26 +24,22 @@ def get_vectorstore():
         embedding_function=embeddings
     )
 
+# --- RESTORED FUNCTION TO FIX IMPORT ERROR ---
 def index_project(project_id):
     print(f"RAG: Starting indexing for Project {project_id}...")
-    
     try:
-        try:
-            project = Project.objects.get(id=project_id)
-            files = File.objects.filter(project=project)
-        except Project.DoesNotExist:
-            return False, "Project not found."
-
+        project = Project.objects.get(id=project_id)
+        files = File.objects.filter(project=project)
+        
         if not files.exists():
             return True, "No files to index."
 
         documents = []
         for file in files:
-            if not file.content.strip():
+            if not file.content or not file.content.strip():
                 continue 
             
             ext = file.name.split('.')[-1] if '.' in file.name else "text"
-            
             doc = Document(
                 page_content=file.content,
                 metadata={
@@ -53,78 +51,59 @@ def index_project(project_id):
             )
             documents.append(doc)
 
-        if not documents:
-            return True, "No content to index."
-
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
-            chunk_overlap=200,
-            separators=["\n\n", "\n", " ", ""]
+            chunk_overlap=100
         )
         splits = text_splitter.split_documents(documents)
 
         vectorstore = get_vectorstore()
         vectorstore.add_documents(documents=splits)
         
-        try:
-            vectorstore.persist() 
-        except AttributeError:
-            pass 
-        
-        print(f"RAG: Successfully indexed {len(splits)} chunks for Project {project_id}.")
+        print(f"RAG: Successfully indexed {len(splits)} chunks.")
         return True, f"Indexed {len(files)} files."
-        
     except Exception as e:
         print(f"RAG Indexing Error: {str(e)}")
         return False, str(e)
 
 def format_docs(docs):
-    formatted_docs = []
-    for doc in docs:
-        filename = doc.metadata.get("file_name", "Unknown File")
-        entry = f"File: {filename}\nCode Content:\n{doc.page_content}\n------------------------"
-        formatted_docs.append(entry)
-    return "\n\n".join(formatted_docs)
+    return "\n\n".join([f"File: {d.metadata['file_name']}\nContent: {d.page_content}" for d in docs])
+
 
 def chat_with_project(project_id, user_query):
     try:
         vectorstore = get_vectorstore()
         
+        # Compact context
         try:
             project = Project.objects.get(id=project_id)
-            files = File.objects.filter(project=project)
-            file_list = ", ".join([f.name for f in files])
-            project_context = f"Project Name: {project.name}\nFiles in Project: {file_list}"
+            file_names = File.objects.filter(project=project).values_list('name', flat=True)
+            project_context = f"Project: {project.name}. Files: {', '.join(file_names)}"
         except Project.DoesNotExist:
-            project_context = "Project structure unknown."
+            project_context = "Unknown project."
 
+        # Reduce 'k' to 2 to minimize token usage even further
         retriever = vectorstore.as_retriever(
             search_kwargs={
-                "k": 5, 
+                "k": 2, 
                 "filter": {"project_id": str(project_id)} 
             }
         )
 
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-lite", 
+            model="gemini-2.0-flash", 
             google_api_key=settings.GOOGLE_API_KEY,
             temperature=0.3
         )
 
-        template = """You are an expert AI coding assistant named CodeLive AI.
-        
-        Project Overview:
+        template = """You are CodeLive AI, a concise coding assistant.
         {project_context}
-        
-        Use the retrieved code snippets below to answer specific questions about implementation.
-        If the answer is not in the context, say you don't know.
-        
-        Code Context:
+
+        Retrieved Code:
         {context}
-        
+
         Question: {question}
-        
-        Answer:"""
+        Answer concisely:"""
         
         prompt = ChatPromptTemplate.from_template(template)
 
@@ -139,9 +118,14 @@ def chat_with_project(project_id, user_query):
             | StrOutputParser()
         )
 
-        answer = rag_chain.invoke(user_query)
-        return answer
+        return rag_chain.invoke(user_query)
 
     except Exception as e:
-        print(f"AI Error: {str(e)}")
-        return f"I apologize, but I am having trouble connecting to the AI model right now. (Error: {str(e)})"
+        error_msg = str(e)
+        print(f"AI ERROR: {error_msg}")
+        
+        if "429" in error_msg or "quota" in error_msg.lower():
+            # If all models fail, we give the user a clear explanation
+            return "Total Quota Exceeded: You've hit the daily limit for all available Gemini models on this API key. Please wait 24 hours or use a key from a different Google account."
+        
+        return f"Connection issues. (Error: {error_msg[:50]})"

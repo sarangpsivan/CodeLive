@@ -531,28 +531,47 @@ class ProjectPreviewView(APIView):
         if not Membership.objects.filter(project_id=project_id, user=request.user, status=Membership.Status.APPROVED).exists():
             return HttpResponse("Forbidden: You are not a member of this project", status=403)
 
-        # 2. Resolve File
+        # 2. Resolve File Path
         path_parts = file_path.strip('/').split('/')
         file_name = path_parts.pop() 
         folder_names = path_parts    
 
         try:
+            # Find the folder first
             current_folder = Folder.objects.filter(project_id=project_id, parent__isnull=True).first()
-            if not current_folder: return HttpResponse("Root not found", status=404)
+            if not current_folder: return HttpResponse("Root folder not found", status=404)
 
             for folder_name in folder_names:
                 current_folder = Folder.objects.get(project_id=project_id, parent=current_folder, name=folder_name)
 
-            file = File.objects.get(project_id=project_id, folder=current_folder, name=file_name)
+            # --- SMART FILE RETRIEVAL ---
+            try:
+                # Try to find the exact file requested (e.g., index.html)
+                file = File.objects.get(project_id=project_id, folder=current_folder, name=file_name)
+            except File.DoesNotExist:
+                # FALLBACK: If index.html is missing, try to find ANY .html file in the root
+                if file_name == 'index.html':
+                    # Find the first HTML file in the project root
+                    fallback = File.objects.filter(
+                        project_id=project_id, 
+                        folder=current_folder, 
+                        name__endswith='.html'
+                    ).first()
+                    
+                    if fallback:
+                        file = fallback
+                        print(f"DEBUG: 'index.html' missing. Falling back to '{file.name}'")
+                    else:
+                        return HttpResponse(f"No HTML file found in project to preview.", status=404)
+                else:
+                    return HttpResponse(f"File not found: {file_path}", status=404)
 
-            # 3. Determine Mime Type (Force HTML for .html extensions)
+            # 3. Determine Mime Type
             mime_type, _ = mimetypes.guess_type(file.name)
-            if file.name.lower().endswith('.html'):
-                mime_type = 'text/html'
-            elif not mime_type:
-                mime_type = 'text/plain'
+            if file.name.lower().endswith('.html'): mime_type = 'text/html'
+            elif not mime_type: mime_type = 'text/plain'
 
-            # 4. READ CONTENT (Robust Method)
+            # 4. READ CONTENT
             content_str = ""
             try:
                 f = file.content
@@ -562,65 +581,58 @@ class ProjectPreviewView(APIView):
                 else:
                     content_bytes = f
                 
-                # Try to decode; if it fails (images), return raw bytes
                 if isinstance(content_bytes, bytes):
-                    try:
-                        content_str = content_bytes.decode('utf-8')
-                    except UnicodeDecodeError:
-                        return HttpResponse(content_bytes, content_type=mime_type)
+                    try: content_str = content_bytes.decode('utf-8')
+                    except: return HttpResponse(content_bytes, content_type=mime_type)
                 else:
                     content_str = str(content_bytes)
             except Exception as e:
-                print(f"DEBUG: Error reading file content: {e}")
+                print(f"Error reading file: {e}")
                 return HttpResponse("Error reading file", status=500)
 
-            # 5. INJECTION LOGIC
+            # 5. INJECT FIXES (HTML Only)
             token_param = request.GET.get('token')
             
             if mime_type == 'text/html' and token_param:
-                print(f"DEBUG: Injecting token into {file.name}...")
+                # Fix 1: Base Tag for relative paths
+                base_url = request.build_absolute_uri(request.path).rsplit('/', 1)[0] + '/'
+                base_tag = f'<base href="{base_url}">'
                 
-                # A. Inject Meta Tag to fix Referer stripping (Fixes the "Referer present but no token" error)
-                meta = '<meta name="referrer" content="unsafe-url">'
+                # Fix 2: Referrer Meta Tag (Auth Fallback)
+                meta_tag = '<meta name="referrer" content="unsafe-url">'
+                
+                head_content = f"{base_tag}\n{meta_tag}"
+                
                 if '<head>' in content_str:
-                    content_str = content_str.replace('<head>', f'<head>\n{meta}', 1)
+                    content_str = content_str.replace('<head>', f'<head>\n{head_content}', 1)
                 else:
-                    content_str = meta + content_str
+                    content_str = head_content + content_str
 
-                # B. Inject Token into Links
-                # Matches href="...", src='...', href=...
-                link_pattern = r'(?i)\b(href|src)\s*=\s*(["\']?)([^"\'\s>]+)\2'
-                
+                # Fix 3: Token Injection
+                pattern = r'(?i)\b(href|src)\s*=\s*(["\']?)([^"\'\s>]+)\2'
                 def replace_link(match):
                     attr, quote, url = match.groups()
                     if url.startswith(('http', '//', '#', 'data:', 'mailto:')): return match.group(0)
-                    
                     sep = '&' if '?' in url else '?'
-                    # Ensure we have quotes for the new attribute
                     q = quote if quote else '"'
-                    
-                    new_link = f'{attr}={q}{url}{sep}token={token_param}{q}'
-                    print(f"DEBUG: Rewrote {url} -> {new_link}")
-                    return new_link
+                    return f'{attr}={q}{url}{sep}token={token_param}{q}'
 
                 try:
-                    content_str = re.sub(link_pattern, replace_link, content_str)
-                except Exception as e:
-                    print(f"DEBUG: Regex Error: {e}")
+                    content_str = re.sub(pattern, replace_link, content_str)
+                except Exception:
+                    pass
 
             response = HttpResponse(content_str, content_type=mime_type)
             response['X-Content-Type-Options'] = 'nosniff'
-            # Disable Cache to ensure browser gets the injected version
             response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
 
-            # Set Cookie as fallback
             if token_param:
                 response.set_cookie('preview_access_token', token_param, max_age=300, httponly=True, samesite='None', secure=True)
 
             return response
 
         except Exception as e:
-            print(f"Preview Error: {e}")
+            print(f"Preview Logic Error: {e}")
             return HttpResponse("Internal Server Error", status=500)
         
 

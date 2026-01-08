@@ -11,70 +11,87 @@ import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical, VscTerminal } 
 import AuthContext from '../context/AuthContext';
 import AIChatPanel from '../components/AIChatPanel';
 
-const PreviewPanel = ({ projectId, token, activeFileName, content, onClose }) => {
+const PreviewPanel = ({ projectId, token, activeFile, onClose }) => {
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-    const [iframeContent, setIframeContent] = useState('');
+    const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
+    
+    // STATE: Store the path of the last valid HTML file we saw.
+    // Default to 'index.html' initially, but update as user navigates.
+    const [previewPath, setPreviewPath] = useState('index.html');
 
     useEffect(() => {
-        fetch(`${apiBaseUrl}/api/projects/${projectId}/preview/index.html?token=${token}`)
-            .catch(err => console.log("Preview handshake error:", err));
-    }, [projectId, token, apiBaseUrl]);
+        // 1. Get the safe file path or name
+        // (Use .name if .path is missing, which handles cases where activeFile is just {name: 'home.html'})
+        const currentFile = activeFile?.path || activeFile?.name;
 
-    useEffect(() => {
-        if (!content) return;
-
-        if (activeFileName && activeFileName.endsWith('.html')) {
-            const baseUrl = `${apiBaseUrl}/api/projects/${projectId}/preview/`;
-            
-            let processedContent = content;
-            const baseTag = `<base href="${baseUrl}">`;
-
-            if (processedContent.includes('<head>')) {
-                processedContent = processedContent.replace('<head>', `<head>${baseTag}`);
-            } else if (processedContent.includes('<html>')) {
-                processedContent = processedContent.replace('<html>', `<html><head>${baseTag}</head>`);
-            } else {
-                processedContent = `${baseTag}${processedContent}`;
-            }
-            
-            setIframeContent(processedContent);
-        } else {
-            setIframeContent(`<pre style="color:white;">Preview not available for ${activeFileName}</pre>`);
+        // 2. Only update the preview if the user clicked an HTML file
+        if (currentFile && currentFile.endsWith('.html')) {
+            setPreviewPath(currentFile);
         }
-    }, [content, activeFileName, projectId, apiBaseUrl]);
+        
+        // Note: If user clicks style.css, we intentionally DO NOT update previewPath
+        // so the iframe stays on the HTML page while you edit the CSS.
+    }, [activeFile]);
 
-    const openInNewTab = () => {
-        const url = `${apiBaseUrl}/api/projects/${projectId}/preview/${activeFileName || 'index.html'}?token=${token}`;
-        window.open(url, '_blank');
+    // Force a reload whenever the active file changes (to apply CSS changes)
+    // or when the user manually refreshes.
+    useEffect(() => {
+        setRefreshTrigger(Date.now());
+    }, [activeFile]);
+
+    const handleRefresh = () => {
+        setRefreshTrigger(Date.now());
     };
 
+    const previewUrl = `${apiBaseUrl}/api/projects/${projectId}/preview/${previewPath}?token=${token}&t=${refreshTrigger}`;
+
     return (
-        <div className="h-full w-full flex flex-col bg-black border-l border-gray-800 font-sans">
-            <div className="h-10 px-2 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
-                <div className="flex items-center gap-2 flex-grow mr-2">
-                    <div className="bg-black/50 text-gray-300 text-xs px-2 py-1 rounded w-full truncate border border-gray-700 font-mono">
-                        Live Preview: {activeFileName}
-                    </div>
+        <div className="h-full flex flex-col bg-black border-l border-gray-800 font-sans shadow-xl">
+            {/* Header */}
+            <div className="h-10 px-4 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <VscLinkExternal className="text-[var(--primary-purple)]" size={16} />
+                    <h3 className="text-xs uppercase tracking-wide text-gray-300">
+                        {/* Display what we are actually previewing */}
+                        Previewing: {previewPath}
+                    </h3>
                 </div>
-                
-                <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={openInNewTab} title="Open in new tab (Saved Version)" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
-                        <VscLinkExternal size={14} />
+
+                <div className="flex items-center gap-1">
+                    <button 
+                        onClick={handleRefresh} 
+                        className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
+                        title="Refresh Preview"
+                    >
+                        <VscRefresh size={16} />
                     </button>
-                    <button onClick={onClose} title="Close Panel" className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10">
+                    
+                    <a 
+                        href={previewUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
+                        title="Open in New Tab"
+                    >
+                        <VscLinkExternal size={16} />
+                    </a>
+                    
+                    <button 
+                        onClick={onClose} 
+                        className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
+                        title="Close Panel"
+                    >
                         <VscClose size={16} />
                     </button>
                 </div>
             </div>
 
-            <div className="flex-grow bg-white">
-                <iframe
-                    srcDoc={iframeContent} 
-                    title="Live Preview"
-                    sandbox="allow-scripts allow-same-origin allow-forms"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 'none' }}
+            <div className="flex-1 relative bg-white">
+                <iframe 
+                    title="Preview"
+                    src={previewUrl} 
+                    className="w-full h-full border-none"
+                    sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
                 />
             </div>
         </div>
@@ -551,8 +568,7 @@ const EditorPage = () => {
                                    <PreviewPanel 
                                        projectId={projectId} 
                                        token={authTokens?.access}
-                                       activeFileName={activeFile?.name}
-                                       content={activeFile?.content} 
+                                       activeFile={activeFile}
                                        onClose={() => setSidePanel(null)} 
                                    />
                                 )}
