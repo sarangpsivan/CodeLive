@@ -19,10 +19,10 @@ export const AuthProvider = ({ children }) => {
     const loginUser = async (email, password) => {
         try {
             const response = await axiosInstance.post('/api/token/', {
-                username: email, 
-                password: password 
+                username: email,
+                password: password
             });
-            
+
             const data = response.data;
             if (response.status === 200) {
                 setAuthTokens(data);
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
         delete axiosInstance.defaults.headers.common['Authorization'];
         navigate('/login');
     };
-    
+
     const setUserAndTokens = (accessToken, refreshToken) => {
         const tokens = { access: accessToken, refresh: refreshToken };
         setAuthTokens(tokens);
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('authTokens', JSON.stringify(tokens));
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
     };
-    
+
     useEffect(() => {
         const storedTokens = localStorage.getItem('authTokens');
         if (storedTokens) {
@@ -74,6 +74,19 @@ export const AuthProvider = ({ children }) => {
             }
         }
         setLoading(false);
+
+        const handleTokenUpdate = (e) => {
+            console.log("AuthContext: Received token update event");
+            const newTokens = e.detail;
+            setAuthTokens(newTokens);
+            setUser(jwtDecode(newTokens.access));
+        };
+
+        window.addEventListener('authTokensUpdated', handleTokenUpdate);
+
+        return () => {
+            window.removeEventListener('authTokensUpdated', handleTokenUpdate);
+        };
     }, []);
 
     const contextData = useMemo(() => ({

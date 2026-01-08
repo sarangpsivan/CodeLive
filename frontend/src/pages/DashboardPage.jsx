@@ -27,9 +27,9 @@ const DashboardPage = () => {
     const fetchStats = () => {
         axiosInstance.get('/api/dashboard-stats/')
             .then(res => {
-                setStats({ 
+                setStats({
                     collaborators: res.data.total_collaborators,
-                    files: res.data.total_files 
+                    files: res.data.total_files
                 });
             })
             .catch(err => console.error("Failed to fetch stats", err));
@@ -47,14 +47,14 @@ const DashboardPage = () => {
         const connectWebSocket = () => {
             if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
 
-            const currentAuthTokens = localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null;
+            const currentAuthTokens = authTokens || (localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null);
 
-            if (!currentAuthTokens || !user) {
+            if (!currentAuthTokens?.access || !user) {
                 console.log("WebSocket connection skipped (Dashboard): Not logged in.");
                 return;
             }
 
-             try {
+            try {
                 jwtDecode(currentAuthTokens.access);
             } catch (error) {
                 console.error("WebSocket connection skipped (Dashboard): Invalid token.");
@@ -85,21 +85,21 @@ const DashboardPage = () => {
                     console.log("Attempting WebSocket reconnect (Dashboard) in 5 seconds...");
                     reconnectTimeoutId = setTimeout(connectWebSocket, 5000);
                 } else {
-                     console.log("WebSocket not reconnecting (Dashboard).");
+                    console.log("WebSocket not reconnecting (Dashboard).");
                 }
             };
         };
 
-        connectWebSocket(); 
+        connectWebSocket();
 
-        return () => { 
+        return () => {
             if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
             if (socket) {
                 console.log("Closing WebSocket connection (Dashboard) due to cleanup.");
                 socket.close(1000);
             }
         };
-    }, [user?.user_id]);  
+    }, [user?.user_id, authTokens]);
 
     const handleProjectCreated = (newProject) => {
         setProjects(prev => [...prev, newProject]);
@@ -112,15 +112,15 @@ const DashboardPage = () => {
                 onClose={() => setIsModalOpen(false)}
                 onProjectCreated={handleProjectCreated}
             />
-            <JoinProjectModal 
+            <JoinProjectModal
                 isOpen={isJoinModalOpen}
                 onClose={() => setIsJoinModalOpen(false)}
             />
             <main className="flex flex-col lg:flex-row gap-8 p-8 font-sans h-full overflow-hidden">
-                
+
                 <aside className="w-full lg:w-80 bg-[var(--dark-card)] rounded-xl p-6 border border-gray-800 flex flex-col flex-shrink-0 h-full overflow-hidden">
                     <h2 className="text-lg font-semibold mb-6 px-3 text-white flex-shrink-0">Your Projects</h2>
-                    
+
                     <nav className="flex-grow space-y-2 overflow-y-auto scrollbar-hide">
                         {projects.length > 0 ? (
                             projects.map(project => <ProjectCard key={project.id} project={project} />)

@@ -56,7 +56,7 @@ const DocumentationEditorPage = () => {
 
     useEffect(() => {
         setStatus('Loading...');
-        
+
         axiosInstance.get(`/api/projects/${projectId}/`)
             .then(res => setProjectName(res.data.name))
             .catch(err => console.error("Failed to fetch project name", err));
@@ -85,14 +85,14 @@ const DocumentationEditorPage = () => {
                 clearTimeout(reconnectTimeoutRef.current);
                 reconnectTimeoutRef.current = null;
             }
-            
+
             const currentAuthTokens = authTokens || (localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null);
-            
+
             if (!currentAuthTokens?.access) {
                 console.log("WebSocket connection skipped (Docs): Not logged in.");
                 return;
             }
-            
+
             try {
                 jwtDecode(currentAuthTokens.access);
             } catch (error) {
@@ -102,13 +102,14 @@ const DocumentationEditorPage = () => {
 
             console.log("Attempting WebSocket connection (Docs)...");
             const wsUrl = `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`;
-            socketRef.current = new WebSocket(wsUrl);
+            const ws = new WebSocket(wsUrl);
+            socketRef.current = ws;
 
-            socketRef.current.onopen = () => {
+            ws.onopen = () => {
                 console.log("WebSocket connection established (Docs).");
             };
 
-            socketRef.current.onmessage = (event) => {
+            ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log("DocEditor WS Message Received:", data);
 
@@ -117,28 +118,33 @@ const DocumentationEditorPage = () => {
 
                     setContent(data.content);
                     setTitle(data.title);
-                    setInitialContent(data.content); 
-                    setInitialTitle(data.title); 
+                    setInitialContent(data.content);
+                    setInitialTitle(data.title);
                     setLastUpdatedBy(data.updater_username);
                     setLastUpdatedAt(new Date(data.updated_at).toLocaleString());
 
                     setStatus(`Synced: ${new Date(data.updated_at).toLocaleTimeString()}`);
                     setTimeout(() => {
-                         setStatus(prevStatus => prevStatus.startsWith('Synced:') ? 'Saved' : prevStatus);
-                     }, 2000);
+                        setStatus(prevStatus => prevStatus.startsWith('Synced:') ? 'Saved' : prevStatus);
+                    }, 2000);
                 } else if (data.type === 'doc_content_update') {
                     console.log(`DocEditor received remote save update for DIFFERENT document (ID: ${data.documentId})`);
                 }
             };
 
-            socketRef.current.onerror = (error) => {
+            ws.onerror = (error) => {
                 console.error('WebSocket error (Docs):', error);
             };
 
-            socketRef.current.onclose = (event) => {
+            ws.onclose = (event) => {
+                if (socketRef.current !== ws) {
+                    console.log("Ignoring close event for stale socket.");
+                    return;
+                }
+
                 console.log("WebSocket connection closed (Docs).", event.code, event.reason);
                 socketRef.current = null;
-                
+
                 const latestTokens = localStorage.getItem('authTokens');
                 if (event.code !== 1000 && latestTokens) {
                     console.log("Attempting WebSocket reconnect (Docs) in 5 seconds...");
@@ -209,7 +215,7 @@ const DocumentationEditorPage = () => {
         toolbar: [
             [{ 'header': [1, 2, 3, false] }],
             ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block'],
-            [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
             ['link'],
             ['clean']
         ],
@@ -227,7 +233,7 @@ const DocumentationEditorPage = () => {
                     >
                         <FaArrowLeft /> Back to Project Hub
                     </button>
-                    <input 
+                    <input
                         type="text"
                         value={title}
                         onChange={handleTitleChange}
@@ -238,22 +244,20 @@ const DocumentationEditorPage = () => {
                     <p className="text-xs text-gray-500 mt-1">Project: {projectName}</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className={`text-sm italic ${
-                        status === 'Unsaved changes' ? 'text-yellow-400' :
+                    <span className={`text-sm italic ${status === 'Unsaved changes' ? 'text-yellow-400' :
                         status.startsWith('Error') ? 'text-red-400' :
-                        status.startsWith('Synced:') ? 'text-green-400' :
-                        'text-gray-400'
-                    }`}>
-                         {status === 'Loaded' && lastUpdatedBy ? `Last saved: ${lastUpdatedAt} by ${lastUpdatedBy}` : status}
+                            status.startsWith('Synced:') ? 'text-green-400' :
+                                'text-gray-400'
+                        }`}>
+                        {status === 'Loaded' && lastUpdatedBy ? `Last saved: ${lastUpdatedAt} by ${lastUpdatedBy}` : status}
                     </span>
                     <button
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isSaving}
-                        className={`flex items-center gap-2 px-4 py-2 font-semibold rounded-lg transition ${
-                            (!hasUnsavedChanges || isSaving)
-                                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                                : 'bg-[var(--primary-purple)] text-white hover:brightness-110'
-                        }`}
+                        className={`flex items-center gap-2 px-4 py-2 font-semibold rounded-lg transition ${(!hasUnsavedChanges || isSaving)
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            : 'bg-[var(--primary-purple)] text-white hover:brightness-110'
+                            }`}
                     >
                         <FaSave />
                         {isSaving ? 'Saving...' : 'Save Changes'}
@@ -262,7 +266,7 @@ const DocumentationEditorPage = () => {
             </div>
 
             <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-600">
-                 <ReactQuill
+                <ReactQuill
                     theme="snow"
                     value={content}
                     onChange={handleContentChange}

@@ -38,7 +38,7 @@ axiosInstance.interceptors.response.use(
             : null;
 
         if (error.response?.status === 401 && originalRequest.url !== `${baseURL}/api/token/refresh/` && !originalRequest._retry) {
-            originalRequest._retry = true; 
+            originalRequest._retry = true;
 
             if (authTokens?.refresh) {
                 try {
@@ -48,13 +48,15 @@ axiosInstance.interceptors.response.use(
                     });
 
                     const newTokens = refreshResponse.data;
-                    
+
                     const updatedTokens = {
                         ...authTokens,
                         ...newTokens
                     };
-                    
+
                     localStorage.setItem('authTokens', JSON.stringify(updatedTokens));
+
+                    window.dispatchEvent(new CustomEvent('authTokensUpdated', { detail: updatedTokens }));
 
                     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access}`;
                     originalRequest.headers['Authorization'] = `Bearer ${newTokens.access}`;

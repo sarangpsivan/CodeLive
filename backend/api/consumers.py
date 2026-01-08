@@ -4,16 +4,22 @@ from .models import ChatMessage, Project, Documentation, Membership
 from django.contrib.auth.models import User
 from channels.db import database_sync_to_async
 from collections import defaultdict
+import redis
+from django.conf import settings
 
-active_users_in_project = defaultdict(lambda: defaultdict(int))
+r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
 
 class ProjectConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.project_id = self.scope['url_route']['kwargs']['projectId']
         self.room_group_name = f'project_{self.project_id}'
+        self.redis_key = f"project_presence_{self.project_id}" 
         self.user = self.scope["user"]
 
+        print(f"WS-Consumer: Connect attempt for project {self.project_id} by {self.user}")
+
         if self.user.is_anonymous:
+            print("WS-Consumer: Rejecting anonymous user")
             await self.close()
             return
 
@@ -22,10 +28,12 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        active_users_in_project[self.room_group_name][self.user.id] += 1
+        count = await database_sync_to_async(r.hincrby)(self.redis_key, str(self.user.id), 1)
         
-        if active_users_in_project[self.room_group_name][self.user.id] == 1:
+        if count == 1:
             await self.broadcast_presence()
+        else:
+            await self.send_current_presence()
 
         await self.send(text_data=json.dumps({
             'type': 'permission_status',
@@ -34,100 +42,26 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if self.user.is_authenticated:
-            if self.room_group_name in active_users_in_project:
-                user_map = active_users_in_project[self.room_group_name]
-                
-                if self.user.id in user_map:
-                    user_map[self.user.id] -= 1
-                    
-                    if user_map[self.user.id] <= 0:
-                        del user_map[self.user.id]
-                        await self.broadcast_presence() 
-
-                if not user_map:
-                    del active_users_in_project[self.room_group_name]
+            count = await database_sync_to_async(r.hincrby)(self.redis_key, str(self.user.id), -1)
+            
+            if count <= 0:
+                await database_sync_to_async(r.hdel)(self.redis_key, str(self.user.id))
+                await self.broadcast_presence()
 
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        message_type = data.get('type')
-
-        if message_type == 'code_update':
-            if not self.can_edit:
-                return
-            await self.channel_layer.group_send(
-                self.room_group_name, {
-                'type': 'broadcast_code', 
-                'message': data['message'],
-                'fileId': data.get('fileId')
-            })
-
-        elif message_type == 'chat_message':
-            username = self.user.username
-            await self.save_chat_message(data['message'], self.user)
-            await self.channel_layer.group_send(
-                self.room_group_name, {
-                    'type': 'broadcast_chat_message',
-                    'message': data['message'],
-                    'username': username,
-                    'user_id': self.user.id
-                }
-            )
-            
-        elif message_type == 'file_tree_update':
-            await self.channel_layer.group_send(
-                self.room_group_name, {
-                    'type': 'file_tree_update',
-                    'message': data['message']
-                }
-            )
-
-
-    async def broadcast_code(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'code_update',
-            'message': event['message'],
-            'fileId': event.get('fileId')
-        }))
-
-    async def broadcast_chat_message(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'chat_message',
-            'message': event['message'],
-            'username': event['username'],
-            'user_id': event.get('user_id')
-        }))
-
-    async def file_tree_update(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'file_tree_update',
-            'message': event['message']
-        }))
-
-    async def collaborator_update(self, event):
-        removed_user_id = event.get('removed_user_id')
-        if removed_user_id and self.room_group_name in active_users_in_project:
-            if removed_user_id in active_users_in_project[self.room_group_name]:
-                del active_users_in_project[self.room_group_name][removed_user_id]
-            await self.broadcast_presence()
+    async def send_current_presence(self):
+        active_ids_bytes = await database_sync_to_async(r.hkeys)(self.redis_key)
+        active_ids = [int(uid.decode('utf-8')) for uid in active_ids_bytes]
         
         await self.send(text_data=json.dumps({
-            'type': 'collaborator_update',
-            'message': event['message'],
-            'removed_user_id': removed_user_id
-        }))
-
-    async def new_join_request(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'new_join_request'
+            'type': 'presence_update',
+            'active_user_ids': active_ids
         }))
 
     async def broadcast_presence(self):
-        if self.room_group_name in active_users_in_project:
-            active_ids = list(active_users_in_project[self.room_group_name].keys())
-        else:
-            active_ids = []
+        active_ids_bytes = await database_sync_to_async(r.hkeys)(self.redis_key)
+        active_ids = [int(uid.decode('utf-8')) for uid in active_ids_bytes]
             
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -152,6 +86,18 @@ class ProjectConsumer(AsyncWebsocketConsumer):
            'title': event.get('title'),
            'content': event.get('content'),
        }))
+
+    async def collaborator_update(self, event):
+        removed_user_id = event.get('removed_user_id')
+        if removed_user_id:
+            await database_sync_to_async(r.hdel)(self.redis_key, str(removed_user_id))
+            await self.broadcast_presence()
+        
+        await self.send(text_data=json.dumps({
+            'type': 'collaborator_update',
+            'message': event['message'],
+            'removed_user_id': removed_user_id
+        }))
 
     async def doc_list_update(self, event):
        await self.send(text_data=json.dumps({

@@ -38,7 +38,7 @@ const ProjectDetailPage = () => {
     const [activeMembers, setActiveMembers] = useState([]);
     const { user, authTokens } = useContext(AuthContext);
     const navigate = useNavigate();
-    
+
     const [documents, setDocuments] = useState([]);
     const [docsLoading, setDocsLoading] = useState(true);
     const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, docId: null, docTitle: '' });
@@ -54,7 +54,7 @@ const ProjectDetailPage = () => {
                 alert("You do not have access to this project.");
                 navigate('/dashboard');
             });
-        
+
         axiosInstance.get(`/api/projects/${projectId}/members/`)
             .then(res => setMembers(res.data))
             .catch(err => console.error("Failed to fetch members:", err));
@@ -82,11 +82,11 @@ const ProjectDetailPage = () => {
         let socket = null;
 
         const connectWebSocket = () => {
-            const currentAuthTokens = localStorage.getItem('authTokens')
+            const currentAuthTokens = authTokens || (localStorage.getItem('authTokens')
                 ? JSON.parse(localStorage.getItem('authTokens'))
-                : null;
-            
-            if (!currentAuthTokens) return;
+                : null);
+
+            if (!currentAuthTokens?.access) return;
 
             socket = new WebSocket(
                 `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`
@@ -107,7 +107,7 @@ const ProjectDetailPage = () => {
                     setRequestCount(prev => prev + 1);
                 }
 
-                
+
                 if (data.type === 'collaborator_update') {
                     fetchData();
                     if (data.removed_user_id && String(data.removed_user_id) === String(user?.user_id)) {
@@ -115,24 +115,24 @@ const ProjectDetailPage = () => {
                         navigate('/dashboard');
                     }
                 }
-                
+
                 if (data.type === 'doc_list_update') {
                     fetchData();
                 }
 
                 if (data.type === 'doc_content_update') {
                     setDocuments(prevDocs => {
-                       return prevDocs.map(doc => {
-                           if (doc.id === data.documentId) {
-                               return {
-                                     ...doc,
-                                     title: data.title ?? doc.title,
-                                     updated_at: data.updated_at, 
-                                     last_updated_by_username: data.updater_username
-                                 };
-                           }
-                           return doc;
-                       });
+                        return prevDocs.map(doc => {
+                            if (doc.id === data.documentId) {
+                                return {
+                                    ...doc,
+                                    title: data.title ?? doc.title,
+                                    updated_at: data.updated_at,
+                                    last_updated_by_username: data.updater_username
+                                };
+                            }
+                            return doc;
+                        });
                     });
                 }
             };
@@ -149,13 +149,13 @@ const ProjectDetailPage = () => {
                 socket.close();
             }
         };
-    }, [projectId]);
+    }, [projectId, authTokens]);
 
     const handleNewDocument = async () => {
         try {
             const response = await axiosInstance.post(`/api/projects/${projectId}/documentation/`, {
-                title: "New Document", 
-                content: "" 
+                title: "New Document",
+                content: ""
             });
             navigate(`/project/${projectId}/documentation/${response.data.id}`);
         } catch (error) {
@@ -179,7 +179,7 @@ const ProjectDetailPage = () => {
         } catch (error) {
             console.error("Failed to delete document:", error);
             alert("Could not delete the document. Please try again.");
-            setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' }); 
+            setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' });
         }
     };
 
@@ -189,13 +189,13 @@ const ProjectDetailPage = () => {
 
     return (
         <>
-            <InviteModal 
+            <InviteModal
                 isOpen={isInviteModalOpen}
                 onClose={() => setIsInviteModalOpen(false)}
                 project={project}
             />
 
-            <JoinRequestsModal 
+            <JoinRequestsModal
                 isOpen={isRequestsModalOpen}
                 onClose={() => setIsRequestsModalOpen(false)}
                 projectId={projectId}
@@ -211,7 +211,7 @@ const ProjectDetailPage = () => {
             />
 
             <main className="flex-1 p-8 text-white font-sans flex flex-col h-full">
-                
+
                 <div className="flex-shrink-0">
                     <div className="flex justify-between items-center mb-8">
                         <div>
@@ -229,11 +229,11 @@ const ProjectDetailPage = () => {
                                 <span>Last updated 2 hours ago</span>
                             </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-4 flex-shrink-0">
                             {isOwner && (
-                                <button 
-                                    onClick={() => setIsRequestsModalOpen(true)} 
+                                <button
+                                    onClick={() => setIsRequestsModalOpen(true)}
                                     className="relative flex items-center gap-2 px-4 py-2 bg-dark-card font-bold rounded-lg border border-gray-700 hover:bg-gray-800 transition"
                                 >
                                     <FaUserClock /> Join Requests
@@ -244,7 +244,7 @@ const ProjectDetailPage = () => {
                                     )}
                                 </button>
                             )}
-                            
+
                             <Link
                                 to={`/project/${projectId}/editor`}
                                 className="flex items-center justify-center px-6 py-3 bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition-colors"
@@ -258,20 +258,20 @@ const ProjectDetailPage = () => {
 
                 <div className="border-b border-gray-800 flex-shrink-0">
                     <nav className="flex space-x-2">
-                        <button 
-                            onClick={() => setActiveTab('collaborators')} 
+                        <button
+                            onClick={() => setActiveTab('collaborators')}
                             className={`px-4 py-3 font-semibold text-sm rounded-t-lg ${activeTab === 'collaborators' ? 'border-b-2 border-[var(--primary-purple)] text-white' : 'text-gray-400 hover:text-white'}`}
                         >
                             Collaborators
                         </button>
-                        <button 
-                            onClick={() => setActiveTab('documentation')} 
+                        <button
+                            onClick={() => setActiveTab('documentation')}
                             className={`px-4 py-3 font-semibold text-sm rounded-t-lg ${activeTab === 'documentation' ? 'border-b-2 border-[var(--primary-purple)] text-white' : 'text-gray-400 hover:text-white'}`}
                         >
                             Documentation
                         </button>
-                        <button 
-                            onClick={() => setActiveTab('settings')} 
+                        <button
+                            onClick={() => setActiveTab('settings')}
                             className={`px-4 py-3 font-semibold text-sm rounded-t-lg ${activeTab === 'settings' ? 'border-b-2 border-[var(--primary-purple)] text-white' : 'text-gray-400 hover:text-white'}`}
                         >
                             Settings
@@ -281,14 +281,14 @@ const ProjectDetailPage = () => {
 
                 <div className="mt-6 flex-grow overflow-y-auto scrollbar-hide">
                     {activeTab === 'collaborators' && (
-                        <CollaboratorsTab 
-                            members={members} 
-                            activeMembers={activeMembers} 
-                            user={user} 
-                            onInviteClick={() => setIsInviteModalOpen(true)} 
+                        <CollaboratorsTab
+                            members={members}
+                            activeMembers={activeMembers}
+                            user={user}
+                            onInviteClick={() => setIsInviteModalOpen(true)}
                         />
                     )}
-                    
+
                     {activeTab === 'documentation' && (
                         <div>
                             <div className="flex justify-between items-center mb-6">
@@ -310,7 +310,7 @@ const ProjectDetailPage = () => {
                                             key={doc.id}
                                             className="group flex items-center justify-between p-4 bg-[var(--dark-card)] rounded-xl border border-gray-800 hover:border-[var(--primary-purple)] transition cursor-pointer"
                                         >
-                                            <Link 
+                                            <Link
                                                 to={`/project/${projectId}/documentation/${doc.id}`}
                                                 className="flex items-center gap-4 flex-grow min-w-0"
                                             >
@@ -337,13 +337,13 @@ const ProjectDetailPage = () => {
                             )}
                         </div>
                     )}
-                    
+
                     {activeTab === 'settings' && (
-                        <SettingsTab 
-                            projectId={projectId} 
-                            isOwner={isOwner} 
-                            members={members} 
-                            onActionComplete={fetchData} 
+                        <SettingsTab
+                            projectId={projectId}
+                            isOwner={isOwner}
+                            members={members}
+                            onActionComplete={fetchData}
                         />
                     )}
                 </div>

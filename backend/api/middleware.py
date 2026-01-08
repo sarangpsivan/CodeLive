@@ -13,7 +13,8 @@ def get_user(token_key):
         token = AccessToken(token_key)
         user_id = token['user_id']
         return User.objects.get(id=user_id)
-    except Exception:
+    except Exception as e:
+        print(f"WS-Middleware: Token validation failed: {str(e)}")
         return AnonymousUser()
 
 class TokenAuthMiddleware(BaseMiddleware):
@@ -21,10 +22,15 @@ class TokenAuthMiddleware(BaseMiddleware):
         query_string = scope.get('query_string', b'').decode('utf-8')
         query_params = urllib.parse.parse_qs(query_string)
         token = query_params.get('token', [None])[0]
+        
+        print(f"WS-Middleware: Connecting... Token found: {bool(token)}")
 
         if token:
-            scope['user'] = await get_user(token)
+            user = await get_user(token)
+            scope['user'] = user
+            print(f"WS-Middleware: User resolved: {user}")
         else:
             scope['user'] = AnonymousUser()
+            print("WS-Middleware: No token provided, setting AnonymousUser")
 
         return await super().__call__(scope, receive, send)
