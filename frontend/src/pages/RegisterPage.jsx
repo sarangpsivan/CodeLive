@@ -19,7 +19,13 @@ const RegisterPage = () => {
             alert('Passwords do not match!');
             return;
         }
-        
+
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!strongPasswordRegex.test(password)) {
+            alert('Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.');
+            return;
+        }
+
         const nameParts = fullName.split(' ');
         const firstName = nameParts[0];
         const lastName = nameParts.slice(1).join(' ');
@@ -47,7 +53,7 @@ const RegisterPage = () => {
                 <div className="bg-[var(--dark-card)] p-8 rounded-2xl shadow-lg border border-gray-800">
                     <h1 className="text-3xl font-bold text-center mb-2">Create account</h1>
                     <p className="text-center text-gray-400 mb-6">Get started with CodeLive today</p>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                         <a href={`${apiBaseUrl}/accounts/github/login/`} className="flex items-center justify-center py-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition">
                             <FaGithub className="mr-2" /> GitHub
@@ -75,6 +81,7 @@ const RegisterPage = () => {
                         <div>
                             <label className="block text-sm font-medium text-gray-300">Password</label>
                             <input type="password" name="password" placeholder="Create a password" className="w-full px-4 py-3 mt-1 text-white bg-[var(--dark-card)] border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-purple)]" required />
+                            <p className="text-xs text-gray-500 mt-1">(Must contain 8+ chars, 1 uppercase, 1 lowercase, 1 number, and 1 symbol)</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300">Confirm Password</label>

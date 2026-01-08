@@ -24,7 +24,7 @@ const ProfilePage = () => {
             try {
                 const response = await axiosInstance.get('/api/auth/user/');
                 const userData = response.data;
-                
+
                 setFirstName(userData.first_name || '');
                 setLastName(userData.last_name || '');
                 setUserDirectly(prev => ({ ...prev, ...userData }));
@@ -68,6 +68,12 @@ const ProfilePage = () => {
             alert("New passwords do not match!");
             return;
         }
+
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!strongPasswordRegex.test(newPassword)) {
+            setStatus('Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.');
+            return;
+        }
         setStatus('Changing password...');
         try {
             await axiosInstance.post('/api/auth/password/change/', {
@@ -104,8 +110,8 @@ const ProfilePage = () => {
 
     return (
         <div className="h-full bg-[var(--dark-bg)] text-white font-sans flex flex-col overflow-hidden">
-            
-            <ConfirmationModal 
+
+            <ConfirmationModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleDeleteAccount}
@@ -121,26 +127,25 @@ const ProfilePage = () => {
 
             <div className="flex-grow overflow-hidden pb-8 px-8">
                 <div className="max-w-5xl mx-auto h-full flex flex-col md:flex-row gap-8">
-                    
+
                     <nav className="w-full md:w-64 flex-shrink-0 flex flex-col gap-2">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                                    activeTab === tab.id 
-                                        ? 'bg-[var(--primary-purple)] text-white font-bold shadow-lg shadow-purple-900/20' 
-                                        : 'bg-[var(--dark-card)] text-gray-400 hover:bg-gray-800 hover:text-white'
-                                }`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === tab.id
+                                    ? 'bg-[var(--primary-purple)] text-white font-bold shadow-lg shadow-purple-900/20'
+                                    : 'bg-[var(--dark-card)] text-gray-400 hover:bg-gray-800 hover:text-white'
+                                    }`}
                             >
                                 {tab.icon}
                                 {tab.label}
                             </button>
                         ))}
-                        
+
                         <div className="h-px bg-gray-800 my-2 mx-2"></div>
 
-                        <button 
+                        <button
                             onClick={() => navigate('/dashboard')}
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all bg-[var(--dark-card)] text-gray-400 hover:bg-gray-800 hover:text-white"
                         >
@@ -150,7 +155,7 @@ const ProfilePage = () => {
 
                     <div className="flex-1 bg-[var(--dark-card)] rounded-2xl border border-gray-800 shadow-xl overflow-hidden flex flex-col">
                         <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
-                            
+
                             {status && (
                                 <div className={`mb-6 p-3 rounded-lg text-sm font-bold text-center ${status.includes('Failed') ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
                                     {status}
@@ -188,7 +193,7 @@ const ProfilePage = () => {
                                                 <h4 className="font-semibold text-gray-200">Delete Account</h4>
                                                 <p className="text-sm text-gray-400 mt-1">Permanently delete your account and all your data.</p>
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={() => setIsDeleteModalOpen(true)}
                                                 className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-600/50 rounded-lg transition font-semibold flex items-center gap-2"
                                             >
@@ -209,6 +214,7 @@ const ProfilePage = () => {
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-2">New Password</label>
                                         <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[var(--primary-purple)] focus:outline-none" />
+                                        <p className="text-xs text-gray-500 mt-1">(Must contain 8+ chars, 1 uppercase, 1 lowercase, 1 number, and 1 symbol)</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-2">Confirm New Password</label>

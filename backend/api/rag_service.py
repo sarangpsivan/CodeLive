@@ -2,7 +2,7 @@ import os
 import re
 from django.conf import settings
 from .models import File, Project
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_community.embeddings import HuggingFaceEmbeddings 
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -24,7 +24,6 @@ def get_vectorstore():
         embedding_function=embeddings
     )
 
-# --- RESTORED FUNCTION TO FIX IMPORT ERROR ---
 def index_project(project_id):
     print(f"RAG: Starting indexing for Project {project_id}...")
     try:
@@ -70,30 +69,47 @@ def format_docs(docs):
     return "\n\n".join([f"File: {d.metadata['file_name']}\nContent: {d.page_content}" for d in docs])
 
 
-def chat_with_project(project_id, user_query):
+def chat_with_project(project_id, user_query, current_file_context=None):
     try:
+        llm = ChatGroq(
+            model="llama3-8b-8192", 
+            api_key=settings.GROQ_API_KEY,
+            temperature=0.3
+        )
+
+        # MODE 1: Active File Context
+        if current_file_context:
+            template = """You are CodeLive AI, a helpful coding assistant.
+            You are answering questions about the file the user is currently editing.
+
+            {context}
+
+            Question: {question}
+            Answer concisely and directly related to the code provided:"""
+            
+            prompt = ChatPromptTemplate.from_template(template)
+            chain = prompt | llm | StrOutputParser()
+            
+            return chain.invoke({
+                "context": current_file_context,
+                "question": user_query
+            })
+
+        # MODE 2: RAG (Fallback if no file is open or context not sent)
         vectorstore = get_vectorstore()
         
-        # Compact context
         try:
             project = Project.objects.get(id=project_id)
-            file_names = File.objects.filter(project=project).values_list('name', flat=True)
+            file_names = File.objects.filter(project=project).values_list('name', flat=True)[:30]
             project_context = f"Project: {project.name}. Files: {', '.join(file_names)}"
         except Project.DoesNotExist:
             project_context = "Unknown project."
 
-        # Reduce 'k' to 2 to minimize token usage even further
         retriever = vectorstore.as_retriever(
             search_kwargs={
                 "k": 2, 
                 "filter": {"project_id": str(project_id)} 
             }
-        )
-
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash", 
-            google_api_key=settings.GOOGLE_API_KEY,
-            temperature=0.3
         )
 
         template = """You are CodeLive AI, a concise coding assistant.
@@ -125,7 +141,6 @@ def chat_with_project(project_id, user_query):
         print(f"AI ERROR: {error_msg}")
         
         if "429" in error_msg or "quota" in error_msg.lower():
-            # If all models fail, we give the user a clear explanation
-            return "Total Quota Exceeded: You've hit the daily limit for all available Gemini models on this API key. Please wait 24 hours or use a key from a different Google account."
+            return "Total Quota Exceeded: You've hit the daily limit for today. Please wait 24 hours."
         
         return f"Connection issues. (Error: {error_msg[:50]})"

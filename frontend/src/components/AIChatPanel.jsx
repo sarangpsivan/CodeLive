@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaPaperPlane, FaRobot, FaSync } from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
 
-const AIChatPanel = ({ projectId }) => {
+const AIChatPanel = ({ projectId, activeFile }) => {
     const [messages, setMessages] = useState([
         { sender: 'ai', text: 'Hello! I am your AI assistant. I can answer questions about your code. Make sure to "Index" the project first!' }
     ]);
@@ -34,9 +34,11 @@ const AIChatPanel = ({ projectId }) => {
 
         try {
             const response = await axiosInstance.post(`/api/projects/${projectId}/ai/chat/`, {
-                query: userMessage
+                query: userMessage,
+                code: activeFile?.content,
+                file_name: activeFile?.name
             });
-            
+
             setMessages(prev => [...prev, { sender: 'ai', text: response.data.answer }]);
         } catch (error) {
             console.error("AI Chat error:", error);
@@ -48,13 +50,13 @@ const AIChatPanel = ({ projectId }) => {
 
     return (
         <div className="w-full bg-black border-l border-gray-800 flex flex-col h-full font-sans text-white">
-            
+
             <div className="h-14 px-4 border-b border-gray-800 flex justify-between items-center bg-[#1F242A] flex-shrink-0">
                 <div className="flex items-center gap-2 text-white font-bold text-sm">
                     <FaRobot className="text-[var(--primary-purple)]" size={20} />
                     AI Assistant
                 </div>
-                <button 
+                <button
                     onClick={handleIndexProject}
                     disabled={isIndexing}
                     className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 transition text-gray-200 ${isIndexing ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -68,12 +70,11 @@ const AIChatPanel = ({ projectId }) => {
             <div className="flex-grow p-4 overflow-y-auto space-y-4 scrollbar-hide">
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div 
-                            className={`max-w-[85%] p-3 rounded-lg text-sm whitespace-pre-wrap leading-relaxed ${
-                                msg.sender === 'user' 
-                                    ? 'bg-[var(--primary-purple)] text-white rounded-br-none' 
-                                    : 'bg-gray-700 text-gray-200 rounded-bl-none'
-                            }`}
+                        <div
+                            className={`max-w-[85%] p-3 rounded-lg text-sm whitespace-pre-wrap leading-relaxed ${msg.sender === 'user'
+                                ? 'bg-[var(--primary-purple)] text-white rounded-br-none'
+                                : 'bg-gray-700 text-gray-200 rounded-bl-none'
+                                }`}
                         >
                             {msg.text}
                         </div>

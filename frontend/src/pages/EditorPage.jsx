@@ -14,27 +14,18 @@ import AIChatPanel from '../components/AIChatPanel';
 const PreviewPanel = ({ projectId, token, activeFile, onClose }) => {
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
     const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
-    
-    // STATE: Store the path of the last valid HTML file we saw.
-    // Default to 'index.html' initially, but update as user navigates.
+
     const [previewPath, setPreviewPath] = useState('index.html');
 
     useEffect(() => {
-        // 1. Get the safe file path or name
-        // (Use .name if .path is missing, which handles cases where activeFile is just {name: 'home.html'})
         const currentFile = activeFile?.path || activeFile?.name;
 
-        // 2. Only update the preview if the user clicked an HTML file
         if (currentFile && currentFile.endsWith('.html')) {
             setPreviewPath(currentFile);
         }
-        
-        // Note: If user clicks style.css, we intentionally DO NOT update previewPath
-        // so the iframe stays on the HTML page while you edit the CSS.
+
     }, [activeFile]);
 
-    // Force a reload whenever the active file changes (to apply CSS changes)
-    // or when the user manually refreshes.
     useEffect(() => {
         setRefreshTrigger(Date.now());
     }, [activeFile]);
@@ -47,37 +38,35 @@ const PreviewPanel = ({ projectId, token, activeFile, onClose }) => {
 
     return (
         <div className="h-full flex flex-col bg-black border-l border-gray-800 font-sans shadow-xl">
-            {/* Header */}
             <div className="h-10 px-4 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
                 <div className="flex items-center gap-2 text-white font-bold text-sm">
                     <VscLinkExternal className="text-[var(--primary-purple)]" size={16} />
                     <h3 className="text-xs uppercase tracking-wide text-gray-300">
-                        {/* Display what we are actually previewing */}
                         Previewing: {previewPath}
                     </h3>
                 </div>
 
                 <div className="flex items-center gap-1">
-                    <button 
-                        onClick={handleRefresh} 
+                    <button
+                        onClick={handleRefresh}
                         className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
                         title="Refresh Preview"
                     >
                         <VscRefresh size={16} />
                     </button>
-                    
-                    <a 
-                        href={previewUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
+
+                    <a
+                        href={previewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
                         title="Open in New Tab"
                     >
                         <VscLinkExternal size={16} />
                     </a>
-                    
-                    <button 
-                        onClick={onClose} 
+
+                    <button
+                        onClick={onClose}
                         className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
                         title="Close Panel"
                     >
@@ -87,9 +76,9 @@ const PreviewPanel = ({ projectId, token, activeFile, onClose }) => {
             </div>
 
             <div className="flex-1 relative bg-white">
-                <iframe 
+                <iframe
                     title="Preview"
-                    src={previewUrl} 
+                    src={previewUrl}
                     className="w-full h-full border-none"
                     sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
                 />
@@ -119,15 +108,15 @@ const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, on
 
     return (
         <div className="h-full w-full flex flex-col bg-black border-l border-gray-800 font-sans">
-            
+
             <div className="h-10 px-4 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
                 <div className="flex items-center gap-2 text-white font-bold text-sm">
                     <VscTerminal className="text-[var(--primary-purple)]" size={16} />
                     <h3 className="text-xs uppercase tracking-wide text-gray-300">Terminal</h3>
                 </div>
-                <button 
-                    onClick={onClose} 
-                    title="Close Panel" 
+                <button
+                    onClick={onClose}
+                    title="Close Panel"
                     className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
                 >
                     <VscClose size={16} />
@@ -158,7 +147,7 @@ const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, on
                     <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Standard Input</span>
                     <span className="text-[10px] text-gray-500">Press Enter to send</span>
                 </div>
-                
+
                 <form onSubmit={handleFormSubmit} className="flex gap-2">
                     <div className="flex-grow flex items-center bg-gray-900 rounded-lg px-3 py-2 border border-gray-700 focus-within:ring-1 focus-within:ring-[var(--primary-purple)]">
                         <span className="text-green-500 font-mono text-sm mr-2 select-none">➜</span>
@@ -280,7 +269,7 @@ const EditorPage = () => {
                     });
                 } else if (data.type === 'chat_message') {
                     setMessages(prevMessages => [...prevMessages, data]);
-                    
+
                     if (activeActivityBarTab !== 'chat' && data.user_id !== user.user_id) {
                         setHasUnreadChat(true);
                     }
@@ -289,7 +278,7 @@ const EditorPage = () => {
                 }
                 else if (data.type === 'alert_update') {
                     setAlertRefreshKey(prev => prev + 1);
-                    
+
                     if (data.unresolved_count === 0) {
                         setHasUnreadAlerts(false);
                     } else if (activeActivityBarTab !== 'alerts') {
@@ -325,8 +314,8 @@ const EditorPage = () => {
 
     const canEdit = useMemo(() => {
         if (!project || !user) return false;
-        if (project.owner === user.user_id) return true; 
-        
+        if (project.owner === user.user_id) return true;
+
         const myMembership = allMembers.find(m => m.user === user.user_id);
         return myMembership?.role === 'ADMIN' || myMembership?.role === 'EDITOR';
     }, [project, user, allMembers]);
@@ -334,10 +323,10 @@ const EditorPage = () => {
     const enrichedMessages = useMemo(() => {
         return messages.map(msg => {
             const member = allMembers.find(m => m.user === msg.user_id);
-            
+
             return {
-            ...msg,
-            username: member?.first_name || member?.email || msg.username || 'Unknown User'
+                ...msg,
+                username: member?.first_name || member?.email || msg.username || 'Unknown User'
             };
         });
     }, [messages, allMembers]);
@@ -425,9 +414,9 @@ const EditorPage = () => {
     const handleTerminalSubmit = () => {
         if (currentTerminalInput.trim() === '') return;
         setTerminalLines(prev => [...prev, { type: 'input', content: currentTerminalInput }]);
-        
+
         setInputHistory(prev => [...prev, currentTerminalInput]);
-        
+
         setCurrentTerminalInput('');
     };
 
@@ -437,7 +426,7 @@ const EditorPage = () => {
         setSidePanel('output');
         setIsExecuting(true);
         setTerminalLines([{ type: 'output', content: 'Executing...' }]);
-        
+
         const stdin = inputHistory.join('\n');
         try {
             const response = await axiosInstance.post('/api/execute/', {
@@ -445,14 +434,14 @@ const EditorPage = () => {
                 code: activeFile.content,
                 input: stdin
             });
-            
+
             const { stdout, stderr, compile_output, message, status } = response.data;
             let result = '';
             if (stdout) result += stdout;
             if (stderr) result += `Error:\n${stderr}`;
             if (compile_output) result += `Compile Error:\n${compile_output}`;
             if (message) result += `Message:\n${message}`;
-            
+
             setTerminalLines([{ type: 'output', content: result || `Execution finished with status: ${status?.description || 'unknown'}` }]);
         } catch (error) {
             setTerminalLines([{ type: 'output', content: "An error occurred while executing the code." }]);
@@ -485,7 +474,7 @@ const EditorPage = () => {
             <div className="flex flex-grow overflow-hidden">
                 <ActivityBar
                     activeTab={activeActivityBarTab}
-                    onTabChange={handleTabChange} 
+                    onTabChange={handleTabChange}
                     onRunCode={handleRunCode}
                     isRunButtonEnabled={isRunButtonEnabled}
                     isExecuting={isExecuting}
@@ -499,9 +488,9 @@ const EditorPage = () => {
                     {activeActivityBarTab === 'chat' && (
                         <ChatPanel messages={enrichedMessages} onSendMessage={handleSendMessage} currentUser={user} />
                     )}
-                    
+
                     {activeActivityBarTab === 'ai_chat' && (
-                        <AIChatPanel projectId={projectId} />
+                        <AIChatPanel projectId={projectId} activeFile={activeFile} />
                     )}
                     {activeActivityBarTab === 'alerts' && (
                         <AlertsPanel
@@ -565,12 +554,12 @@ const EditorPage = () => {
                         {sidePanel && (
                             <div className="w-1/2 border-l border-gray-700">
                                 {sidePanel === 'preview' && (
-                                   <PreviewPanel 
-                                       projectId={projectId} 
-                                       token={authTokens?.access}
-                                       activeFile={activeFile}
-                                       onClose={() => setSidePanel(null)} 
-                                   />
+                                    <PreviewPanel
+                                        projectId={projectId}
+                                        token={authTokens?.access}
+                                        activeFile={activeFile}
+                                        onClose={() => setSidePanel(null)}
+                                    />
                                 )}
                                 {sidePanel === 'output' && (
                                     <SimulatedTerminalPanel

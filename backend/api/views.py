@@ -339,13 +339,17 @@ class CodeExecutionView(APIView):
                 return Response({"error": "Failed to get submission token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             result_url = f"{url}/{submission_token}"
-            while True:
+            
+            max_retries = 50
+            for _ in range(max_retries):
                 result_response = requests.get(result_url, headers=headers)
                 result_response.raise_for_status()
                 result_data = result_response.json()
                 if result_data.get('status', {}).get('id', 0) > 2: 
                     return Response(result_data)
                 time.sleep(0.2) 
+            
+            return Response({"error": "Execution timed out"}, status=status.HTTP_408_REQUEST_TIMEOUT) 
 
         except requests.exceptions.RequestException as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -474,6 +478,9 @@ class AIChatView(APIView):
 
     def post(self, request, project_id):
         query = request.data.get('query')
+        code_context = request.data.get('code')
+        file_name = request.data.get('file_name')
+
         if not query:
             return Response({'error': 'Query is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -481,7 +488,11 @@ class AIChatView(APIView):
              return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            answer = chat_with_project(project_id, query)
+            current_file_context = None
+            if code_context:
+                current_file_context = f"Active File: {file_name}\nContent:\n{code_context}"
+
+            answer = chat_with_project(project_id, query, current_file_context)
             return Response({'answer': answer})
         except Exception as e:
             print(f"AI Error: {str(e)}")
@@ -527,31 +538,24 @@ class ProjectPreviewView(APIView):
 
     @method_decorator(xframe_options_exempt)
     def get(self, request, project_id, file_path):
-        # 1. Check Membership
         if not Membership.objects.filter(project_id=project_id, user=request.user, status=Membership.Status.APPROVED).exists():
             return HttpResponse("Forbidden: You are not a member of this project", status=403)
 
-        # 2. Resolve File Path
         path_parts = file_path.strip('/').split('/')
         file_name = path_parts.pop() 
         folder_names = path_parts    
 
         try:
-            # Find the folder first
             current_folder = Folder.objects.filter(project_id=project_id, parent__isnull=True).first()
             if not current_folder: return HttpResponse("Root folder not found", status=404)
 
             for folder_name in folder_names:
                 current_folder = Folder.objects.get(project_id=project_id, parent=current_folder, name=folder_name)
 
-            # --- SMART FILE RETRIEVAL ---
             try:
-                # Try to find the exact file requested (e.g., index.html)
                 file = File.objects.get(project_id=project_id, folder=current_folder, name=file_name)
             except File.DoesNotExist:
-                # FALLBACK: If index.html is missing, try to find ANY .html file in the root
                 if file_name == 'index.html':
-                    # Find the first HTML file in the project root
                     fallback = File.objects.filter(
                         project_id=project_id, 
                         folder=current_folder, 
@@ -566,12 +570,10 @@ class ProjectPreviewView(APIView):
                 else:
                     return HttpResponse(f"File not found: {file_path}", status=404)
 
-            # 3. Determine Mime Type
             mime_type, _ = mimetypes.guess_type(file.name)
             if file.name.lower().endswith('.html'): mime_type = 'text/html'
             elif not mime_type: mime_type = 'text/plain'
 
-            # 4. READ CONTENT
             content_str = ""
             try:
                 f = file.content
@@ -590,15 +592,12 @@ class ProjectPreviewView(APIView):
                 print(f"Error reading file: {e}")
                 return HttpResponse("Error reading file", status=500)
 
-            # 5. INJECT FIXES (HTML Only)
             token_param = request.GET.get('token')
             
             if mime_type == 'text/html' and token_param:
-                # Fix 1: Base Tag for relative paths
                 base_url = request.build_absolute_uri(request.path).rsplit('/', 1)[0] + '/'
                 base_tag = f'<base href="{base_url}">'
                 
-                # Fix 2: Referrer Meta Tag (Auth Fallback)
                 meta_tag = '<meta name="referrer" content="unsafe-url">'
                 
                 head_content = f"{base_tag}\n{meta_tag}"
@@ -608,7 +607,6 @@ class ProjectPreviewView(APIView):
                 else:
                     content_str = head_content + content_str
 
-                # Fix 3: Token Injection
                 pattern = r'(?i)\b(href|src)\s*=\s*(["\']?)([^"\'\s>]+)\2'
                 def replace_link(match):
                     attr, quote, url = match.groups()
