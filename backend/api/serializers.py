@@ -56,13 +56,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class MemberSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
     user = serializers.ReadOnlyField(source='user.id')
 
     class Meta:
         model = Membership
-        fields = ['id', 'user', 'first_name', 'email', 'role']
-        read_only_fields = ['user', 'first_name', 'email']
+        fields = ['id', 'user', 'first_name', 'last_name', 'email', 'role']
+        read_only_fields = ['user', 'first_name', 'last_name', 'email']
 
 class FileSerializer(serializers.ModelSerializer):
     class Meta:

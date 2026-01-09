@@ -7,8 +7,8 @@ const CollaboratorsTab = ({ members = [], activeMembers = [], user, onInviteClic
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-white">Team Members</h2>
-                <button 
-                    onClick={onInviteClick} 
+                <button
+                    onClick={onInviteClick}
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition"
                 >
                     <FaUserPlus /> Invite Member
@@ -30,7 +30,12 @@ const CollaboratorsTab = ({ members = [], activeMembers = [], user, onInviteClic
                                     {isActive && <div className="absolute bottom-0 right-3 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[var(--dark-card)]" />}
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-white">{isCurrentUser ? 'You' : (member.first_name || member.email)}</p>
+                                    <p className="font-semibold text-white">
+                                        {isCurrentUser
+                                            ? 'You'
+                                            : ((member.first_name ? member.first_name + ' ' : '') + (member.last_name || '')).trim() || member.email
+                                        }
+                                    </p>
                                     <p className="text-sm text-gray-400">{member.email}</p>
                                 </div>
                             </div>

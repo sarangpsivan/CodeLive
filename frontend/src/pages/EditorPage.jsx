@@ -326,7 +326,7 @@ const EditorPage = () => {
 
             return {
                 ...msg,
-                username: member?.first_name || member?.email || msg.username || 'Unknown User'
+                username: ((member?.first_name ? member.first_name + ' ' : '') + (member?.last_name || '')).trim() || member?.email || msg.username || 'Unknown User'
             };
         });
     }, [messages, allMembers]);

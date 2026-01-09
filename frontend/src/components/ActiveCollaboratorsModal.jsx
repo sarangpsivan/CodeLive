@@ -6,14 +6,14 @@ const ActiveCollaboratorsModal = ({ isOpen, onClose, activeMembers = [] }) => {
 
     return (
         <>
-            <div 
+            <div
                 className="fixed inset-0 z-40 bg-transparent"
-                onClick={onClose} 
+                onClick={onClose}
             />
 
-            <div 
+            <div
                 className="fixed top-14 right-4 z-50 w-80 bg-[#1e2329] border border-gray-700 rounded-[28px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-                onClick={e => e.stopPropagation()} 
+                onClick={e => e.stopPropagation()}
             >
                 <div className="px-6 py-4 bg-[#252a31] border-b border-gray-700 flex justify-between items-center">
                     <h2 className="text-sm font-semibold text-gray-200">Active Collaborators</h2>
@@ -21,21 +21,21 @@ const ActiveCollaboratorsModal = ({ isOpen, onClose, activeMembers = [] }) => {
                         {activeMembers.length} Online
                     </span>
                 </div>
-                
+
                 <div className="max-h-[300px] overflow-y-auto scrollbar-hide p-2 space-y-1">
                     {activeMembers.length > 0 ? (
                         activeMembers.map(member => (
-                            <div 
-                                key={member.id} 
+                            <div
+                                key={member.id}
                                 className="flex items-center gap-3 p-2 hover:bg-[#2d333b] rounded-xl transition-colors cursor-default"
                             >
                                 <div className="w-10 h-10 rounded-full bg-[var(--primary-purple)] flex-shrink-0 flex items-center justify-center font-bold text-white shadow-sm border-2 border-[#1e2329]">
                                     {(member.first_name || member.email).charAt(0).toUpperCase()}
                                 </div>
-                                
+
                                 <div className="min-w-0 flex-1">
                                     <p className="font-medium text-gray-200 text-sm truncate">
-                                        {member.first_name || 'User'}
+                                        {((member.first_name ? member.first_name + ' ' : '') + (member.last_name || '')).trim() || member.email || 'User'}
                                     </p>
                                     <p className="text-xs text-gray-400 truncate">
                                         {member.email}
@@ -53,7 +53,7 @@ const ActiveCollaboratorsModal = ({ isOpen, onClose, activeMembers = [] }) => {
                 </div>
 
                 <div className="bg-[#252a31] p-2 border-t border-gray-700 text-center">
-                    <button 
+                    <button
                         onClick={onClose}
                         className="text-xs font-medium text-gray-400 hover:text-white transition py-1"
                     >
