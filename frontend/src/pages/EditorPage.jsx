@@ -7,166 +7,11 @@ import FileExplorer from '../components/FileExplorer';
 import ChatPanel from '../components/ChatPanel';
 import AlertsPanel from '../components/AlertsPanel';
 import axiosInstance from '../utils/axiosInstance';
-import { VscClose, VscRefresh, VscLinkExternal, VscKebabVertical, VscTerminal } from 'react-icons/vsc';
+import { VscClose, VscKebabVertical } from 'react-icons/vsc';
 import AuthContext from '../context/AuthContext';
 import AIChatPanel from '../components/AIChatPanel';
-
-const PreviewPanel = ({ projectId, token, activeFile, onClose }) => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-    const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
-
-    const [previewPath, setPreviewPath] = useState('index.html');
-
-    useEffect(() => {
-        const currentFile = activeFile?.path || activeFile?.name;
-
-        if (currentFile && currentFile.endsWith('.html')) {
-            setPreviewPath(currentFile);
-        }
-
-    }, [activeFile]);
-
-    useEffect(() => {
-        setRefreshTrigger(Date.now());
-    }, [activeFile]);
-
-    const handleRefresh = () => {
-        setRefreshTrigger(Date.now());
-    };
-
-    const previewUrl = `${apiBaseUrl}/api/projects/${projectId}/preview/${previewPath}?token=${token}&t=${refreshTrigger}`;
-
-    return (
-        <div className="h-full flex flex-col bg-black border-l border-gray-800 font-sans shadow-xl">
-            <div className="h-10 px-4 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
-                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                    <VscLinkExternal className="text-[var(--primary-purple)]" size={16} />
-                    <h3 className="text-xs uppercase tracking-wide text-gray-300">
-                        Previewing: {previewPath}
-                    </h3>
-                </div>
-
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={handleRefresh}
-                        className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
-                        title="Refresh Preview"
-                    >
-                        <VscRefresh size={16} />
-                    </button>
-
-                    <a
-                        href={previewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
-                        title="Open in New Tab"
-                    >
-                        <VscLinkExternal size={16} />
-                    </a>
-
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
-                        title="Close Panel"
-                    >
-                        <VscClose size={16} />
-                    </button>
-                </div>
-            </div>
-
-            <div className="flex-1 relative bg-white">
-                <iframe
-                    title="Preview"
-                    src={previewUrl}
-                    className="w-full h-full border-none"
-                    sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
-                />
-            </div>
-        </div>
-    );
-};
-
-const SimulatedTerminalPanel = ({ lines, inputValue, onInputChange, onSubmit, onClose, isExecuting }) => {
-    const endOfTerminalRef = useRef(null);
-
-    useEffect(() => {
-        endOfTerminalRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [lines]);
-
-    const handleFormSubmit = (e) => {
-        e.preventDefault();
-        onSubmit();
-    };
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            onSubmit();
-        }
-    };
-
-    return (
-        <div className="h-full w-full flex flex-col bg-black border-l border-gray-800 font-sans">
-
-            <div className="h-10 px-4 border-b border-gray-800 flex items-center justify-between bg-[#1F242A] flex-shrink-0">
-                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                    <VscTerminal className="text-[var(--primary-purple)]" size={16} />
-                    <h3 className="text-xs uppercase tracking-wide text-gray-300">Terminal</h3>
-                </div>
-                <button
-                    onClick={onClose}
-                    title="Close Panel"
-                    className="text-gray-400 hover:text-white transition p-1 rounded hover:bg-white/10"
-                >
-                    <VscClose size={16} />
-                </button>
-            </div>
-
-            <div className="flex-grow overflow-y-auto p-4 font-mono text-sm space-y-1 scrollbar-hide text-gray-300">
-                {lines.length === 0 && (
-                    <div className="text-gray-600 italic text-center mt-10 text-xs">
-                        Ready to execute code...
-                    </div>
-                )}
-                {lines.map((line, index) => (
-                    <div key={index} className="whitespace-pre-wrap break-words">
-                        {line.type === 'output' && (
-                            <span>{line.content}</span>
-                        )}
-                        {line.type === 'input' && (
-                            <span className="text-cyan-400 font-bold">{line.content}</span>
-                        )}
-                    </div>
-                ))}
-                <div ref={endOfTerminalRef} />
-            </div>
-
-            <div className="p-3 border-t border-gray-800 bg-[#1F242A] flex-shrink-0">
-                <div className="flex justify-between items-center mb-2 px-1">
-                    <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Standard Input</span>
-                    <span className="text-[10px] text-gray-500">Press Enter to send</span>
-                </div>
-
-                <form onSubmit={handleFormSubmit} className="flex gap-2">
-                    <div className="flex-grow flex items-center bg-gray-900 rounded-lg px-3 py-2 border border-gray-700 focus-within:ring-1 focus-within:ring-[var(--primary-purple)]">
-                        <span className="text-green-500 font-mono text-sm mr-2 select-none">➜</span>
-                        <input
-                            type="text"
-                            className="flex-grow bg-transparent text-white font-mono text-sm focus:outline-none placeholder-gray-600"
-                            placeholder={isExecuting ? 'Program is running...' : "Type input here..."}
-                            value={inputValue}
-                            onChange={(e) => onInputChange(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            disabled={isExecuting}
-                            autoComplete="off"
-                        />
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
+import PreviewPanel from '../components/PreviewPanel';
+import TerminalPanel from '../components/TerminalPanel';
 
 const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -563,7 +408,7 @@ const EditorPage = () => {
                                     />
                                 )}
                                 {sidePanel === 'output' && (
-                                    <SimulatedTerminalPanel
+                                    <TerminalPanel
                                         lines={terminalLines}
                                         inputValue={currentTerminalInput}
                                         onInputChange={setCurrentTerminalInput}

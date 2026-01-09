@@ -340,14 +340,23 @@ class CodeExecutionView(APIView):
 
             result_url = f"{url}/{submission_token}"
             
-            max_retries = 50
-            for _ in range(max_retries):
+            poll_interval = 0.1
+            total_time = 0
+            max_time = 15.0
+
+            while total_time < max_time:
                 result_response = requests.get(result_url, headers=headers)
                 result_response.raise_for_status()
                 result_data = result_response.json()
+                
                 if result_data.get('status', {}).get('id', 0) > 2: 
                     return Response(result_data)
-                time.sleep(0.2) 
+                
+                time.sleep(poll_interval)
+                total_time += poll_interval
+                
+                if poll_interval < 1.0:
+                    poll_interval += 0.1
             
             return Response({"error": "Execution timed out"}, status=status.HTTP_408_REQUEST_TIMEOUT) 
 
