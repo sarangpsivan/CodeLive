@@ -117,6 +117,13 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         try:
             project = Project.objects.get(id=self.project_id)
             ChatMessage.objects.create(project=project, user=user, message=message)
+            
+            existing_messages = ChatMessage.objects.filter(project=project).order_by('-timestamp')
+            if existing_messages.count() > 50:
+                ids_to_delete = list(existing_messages[50:].values_list('id', flat=True))
+                if ids_to_delete:
+                    ChatMessage.objects.filter(id__in=ids_to_delete).delete()
+
         except Project.DoesNotExist:
             pass
         except Exception as e:
