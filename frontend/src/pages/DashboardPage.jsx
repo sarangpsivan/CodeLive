@@ -55,7 +55,12 @@ const DashboardPage = () => {
             }
 
             try {
-                jwtDecode(currentAuthTokens.access);
+                const decoded = jwtDecode(currentAuthTokens.access);
+                const isExpired = decoded.exp * 1000 < Date.now();
+                if (isExpired) {
+                    console.log("WebSocket connection skipped (Dashboard): Token expired.");
+                    return;
+                }
             } catch (error) {
                 console.error("WebSocket connection skipped (Dashboard): Invalid token.");
                 return;

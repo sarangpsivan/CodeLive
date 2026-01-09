@@ -357,6 +357,7 @@ const EditorPage = () => {
                     name: res.data.name,
                     content: res.data.content,
                     language: getLanguageFromFile(res.data.name),
+                    path: res.data.path,
                 };
                 setOpenFiles(prev => [...prev, newFile]);
                 setActiveFileId(newFile.id);

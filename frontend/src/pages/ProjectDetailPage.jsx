@@ -88,6 +88,17 @@ const ProjectDetailPage = () => {
 
             if (!currentAuthTokens?.access) return;
 
+            try {
+                const decoded = jwtDecode(currentAuthTokens.access);
+                if (decoded.exp * 1000 < Date.now()) {
+                    console.log("WebSocket connection skipped (Project): Token expired.");
+                    return;
+                }
+            } catch (e) {
+                console.error("WebSocket connection skipped (Project): Invalid token.");
+                return;
+            }
+
             socket = new WebSocket(
                 `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`
             );

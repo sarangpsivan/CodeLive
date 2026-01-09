@@ -532,6 +532,8 @@ class AlertDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 # preview file view
 
+LINK_REPLACEMENT_PATTERN = re.compile(r'(?i)\b(href|src)\s*=\s*(["\']?)([^"\'\s>]+)\2')
+
 class ProjectPreviewView(APIView):
     authentication_classes = [CodeLivePreviewAuthentication] 
     permission_classes = [IsAuthenticated]
@@ -550,8 +552,12 @@ class ProjectPreviewView(APIView):
             if not current_folder: return HttpResponse("Root folder not found", status=404)
 
             for folder_name in folder_names:
-                current_folder = Folder.objects.get(project_id=project_id, parent=current_folder, name=folder_name)
+                try:
+                    current_folder = Folder.objects.get(project_id=project_id, parent=current_folder, name=folder_name)
+                except Folder.DoesNotExist:
+                     return HttpResponse(f"Folder not found: {folder_name}", status=404)
 
+            file = None
             try:
                 file = File.objects.get(project_id=project_id, folder=current_folder, name=file_name)
             except File.DoesNotExist:
@@ -564,14 +570,27 @@ class ProjectPreviewView(APIView):
                     
                     if fallback:
                         file = fallback
-                        print(f"DEBUG: 'index.html' missing. Falling back to '{file.name}'")
                     else:
-                        return HttpResponse(f"No HTML file found in project to preview.", status=404)
+                         return HttpResponse(f"No HTML file found in project to preview.", status=404)
                 else:
                     return HttpResponse(f"File not found: {file_path}", status=404)
 
+            from django.utils.http import http_date, parse_http_date_safe
+            
+            last_modified_time = file.updated_at.timestamp() if file.updated_at else time.time()
+            last_modified_str = http_date(last_modified_time)
+
+            if_modified_since = request.META.get('HTTP_IF_MODIFIED_SINCE')
+            if if_modified_since:
+                client_timestamp = parse_http_date_safe(if_modified_since)
+                if client_timestamp and client_timestamp >= int(last_modified_time):
+                    return HttpResponse(status=304)
+
             mime_type, _ = mimetypes.guess_type(file.name)
             if file.name.lower().endswith('.html'): mime_type = 'text/html'
+            elif file.name.lower().endswith('.css'): mime_type = 'text/css'
+            elif file.name.lower().endswith('.js'): mime_type = 'application/javascript'
+            elif file.name.lower().endswith('.json'): mime_type = 'application/json'
             elif not mime_type: mime_type = 'text/plain'
 
             content_str = ""
@@ -585,11 +604,15 @@ class ProjectPreviewView(APIView):
                 
                 if isinstance(content_bytes, bytes):
                     try: content_str = content_bytes.decode('utf-8')
-                    except: return HttpResponse(content_bytes, content_type=mime_type)
+                    except: 
+                        response = HttpResponse(content_bytes, content_type=mime_type)
+                        response['Last-Modified'] = last_modified_str
+                        response['Cache-Control'] = 'no-cache' 
+                        return response
                 else:
                     content_str = str(content_bytes)
             except Exception as e:
-                print(f"Error reading file: {e}")
+                print(f"Error reading file {file.name}: {e}")
                 return HttpResponse("Error reading file", status=500)
 
             token_param = request.GET.get('token')
@@ -597,8 +620,7 @@ class ProjectPreviewView(APIView):
             if mime_type == 'text/html' and token_param:
                 base_url = request.build_absolute_uri(request.path).rsplit('/', 1)[0] + '/'
                 base_tag = f'<base href="{base_url}">'
-                
-                meta_tag = '<meta name="referrer" content="unsafe-url">'
+                meta_tag = '<meta name="referrer" content="unsafe-url">' 
                 
                 head_content = f"{base_tag}\n{meta_tag}"
                 
@@ -607,7 +629,6 @@ class ProjectPreviewView(APIView):
                 else:
                     content_str = head_content + content_str
 
-                pattern = r'(?i)\b(href|src)\s*=\s*(["\']?)([^"\'\s>]+)\2'
                 def replace_link(match):
                     attr, quote, url = match.groups()
                     if url.startswith(('http', '//', '#', 'data:', 'mailto:')): return match.group(0)
@@ -616,13 +637,14 @@ class ProjectPreviewView(APIView):
                     return f'{attr}={q}{url}{sep}token={token_param}{q}'
 
                 try:
-                    content_str = re.sub(pattern, replace_link, content_str)
+                    content_str = LINK_REPLACEMENT_PATTERN.sub(replace_link, content_str)
                 except Exception:
                     pass
 
             response = HttpResponse(content_str, content_type=mime_type)
+            response['Last-Modified'] = last_modified_str
+            response['Cache-Control'] = 'no-cache' 
             response['X-Content-Type-Options'] = 'nosniff'
-            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
 
             if token_param:
                 response.set_cookie('preview_access_token', token_param, max_age=300, httponly=True, samesite='None', secure=True)

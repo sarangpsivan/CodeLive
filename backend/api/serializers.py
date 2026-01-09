@@ -83,9 +83,21 @@ class FolderSerializer(serializers.ModelSerializer):
         return FolderSerializer(subfolders, many=True).data
 
 class FileDetailSerializer(serializers.ModelSerializer):
+    path = serializers.SerializerMethodField()
+
     class Meta:
         model = File
-        fields = ['id', 'name', 'content', 'folder', 'project']
+        fields = ['id', 'name', 'content', 'folder', 'project', 'path']
+
+    def get_path(self, obj):
+        path_segments = []
+        current = obj.folder
+        while current and current.parent is not None:
+             path_segments.insert(0, current.name)
+             current = current.parent
+        
+        path_segments.append(obj.name)
+        return "/".join(path_segments)
 
 class FileCreateSerializer(serializers.ModelSerializer):
     class Meta:
