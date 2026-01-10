@@ -112,7 +112,7 @@ const DashboardPage = () => {
                 socket.close(1000);
             }
         };
-    }, [user?.user_id, authTokens]);
+    }, [user?.user_id, authTokens?.access]);
 
     const handleProjectCreated = (newProject) => {
         setProjects(prev => [...prev, newProject]);

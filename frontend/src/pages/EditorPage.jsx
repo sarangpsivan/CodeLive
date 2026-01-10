@@ -148,7 +148,7 @@ const EditorPage = () => {
 
             return () => socket.close();
         }
-    }, [projectId, authTokens]);
+    }, [projectId, authTokens?.access]);
 
     const handleTabChange = (tab) => {
         setActiveActivityBarTab(tab);
