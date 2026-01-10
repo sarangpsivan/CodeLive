@@ -7,24 +7,13 @@ from collections import defaultdict
 # Removed module-level Redis connection to prevent import blocking
 
 class ProjectConsumer(AsyncWebsocketConsumer):
-    @property
-    def r(self):
-        # Lazy load Redis connection
-        if not hasattr(self, '_r'):
-            import os
-            import redis
-            from django.conf import settings
-            redis_url = os.environ.get('REDIS_URL')
-            if redis_url:
-                self._r = redis.from_url(redis_url)
-            else:
-                self._r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
-        return self._r
+    # In-memory storage for presence (safe for single-instance deployment)
+    # Structure: presence_data[project_id][user_id] = set(channel_names)
+    presence_data = defaultdict(lambda: defaultdict(set))
 
     async def connect(self):
         self.project_id = self.scope['url_route']['kwargs']['projectId']
         self.room_group_name = f'project_{self.project_id}'
-        self.redis_key = f"project_presence_{self.project_id}" 
         self.user = self.scope["user"]
 
         print(f"WS-Consumer: Connect attempt for project {self.project_id} by {self.user}")
@@ -39,12 +28,13 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        count = await database_sync_to_async(self.r.hincrby)(self.redis_key, str(self.user.id), 1)
+        # Add connection to presence tracker
+        ProjectConsumer.presence_data[self.project_id][self.user.id].add(self.channel_name)
         
-        if count == 1:
-            await self.broadcast_presence()
-        else:
-            await self.send_current_presence()
+        # Determine if this user was already active (had other tabs)
+        # If it's the first connection (len was 0 before, now 1), broadcast join
+        # But here we just broadcast the full list every time to be safe and simple
+        await self.broadcast_presence()
 
         await self.send(text_data=json.dumps({
             'type': 'permission_status',
@@ -53,11 +43,29 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if self.user.is_authenticated:
-            count = await database_sync_to_async(self.r.hincrby)(self.redis_key, str(self.user.id), -1)
+            # Remove this specific connection
+            user_channels = ProjectConsumer.presence_data[self.project_id][self.user.id]
+            user_channels.discard(self.channel_name)
             
-            if count <= 0:
-                await database_sync_to_async(self.r.hdel)(self.redis_key, str(self.user.id))
-                await self.broadcast_presence()
+            # If user has no more connections, remove them from the project list
+            if not user_channels:
+                del ProjectConsumer.presence_data[self.project_id][self.user.id]
+                
+                # Verify if project is empty to clean up memory (optional but good)
+                if not ProjectConsumer.presence_data[self.project_id]:
+                    del ProjectConsumer.presence_data[self.project_id]
+                
+                # Broadcast leaving ONLY if they are truly gone (no tabs left)
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'collaborator_update',
+                        'message': f'{self.user.username} has left.',
+                        'removed_user_id': self.user.id
+                    }
+                )
+
+            await self.broadcast_presence()
 
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
