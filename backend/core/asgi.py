@@ -1,12 +1,13 @@
-import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+
+# Initialize Django ASAP to allow model imports in middleware
+import django
+django.setup()
+
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from api.middleware import TokenAuthMiddleware
 import api.routing
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
-
-# Startup/Shutdown lifecycle handler
 import redis
 from django.conf import settings
 
