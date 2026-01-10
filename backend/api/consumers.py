@@ -118,18 +118,14 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             }))
 
     async def send_current_presence(self):
-        active_ids_bytes = await database_sync_to_async(self.r.hkeys)(self.redis_key)
-        active_ids = [int(uid.decode('utf-8')) for uid in active_ids_bytes]
-        
+        active_ids = list(ProjectConsumer.presence_data[self.project_id].keys())
         await self.send(text_data=json.dumps({
             'type': 'presence_update',
             'active_user_ids': active_ids
         }))
 
     async def broadcast_presence(self):
-        active_ids_bytes = await database_sync_to_async(self.r.hkeys)(self.redis_key)
-        active_ids = [int(uid.decode('utf-8')) for uid in active_ids_bytes]
-            
+        active_ids = list(ProjectConsumer.presence_data[self.project_id].keys())
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -156,10 +152,14 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
     async def collaborator_update(self, event):
         removed_user_id = event.get('removed_user_id')
-        if removed_user_id:
-            await database_sync_to_async(self.r.hdel)(self.redis_key, str(removed_user_id))
-            await self.broadcast_presence()
         
+        # If the user was removed by ID (e.g. kicked or just left), we might want to cleanup presence
+        # But 'disconnect' handles the primary cleanup. This is mostly for broadcasting the message.
+        if removed_user_id and removed_user_id in ProjectConsumer.presence_data[self.project_id]:
+             # Force remove from presence if it was an explicit removal event
+             del ProjectConsumer.presence_data[self.project_id][removed_user_id]
+             await self.broadcast_presence()
+
         await self.send(text_data=json.dumps({
             'type': 'collaborator_update',
             'message': event['message'],
