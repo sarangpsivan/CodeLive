@@ -30,7 +30,8 @@ export const AuthProvider = ({ children }) => {
                 setUser(decodedUser);
                 localStorage.setItem('authTokens', JSON.stringify(data));
                 axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.access}`;
-                navigate('/dashboard');
+                // Force full reload to ensure WebSocket connections initialize cleanly from scratch
+                window.location.href = '/dashboard';
             }
         } catch (error) {
             console.error("Login failed!", error);

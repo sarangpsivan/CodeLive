@@ -37,6 +37,7 @@ const RegisterPage = () => {
                 first_name: firstName,
                 last_name: lastName || ""
             });
+            // Redirect to login page
             navigate('/login');
         } catch (error) {
             console.error('Registration failed!', error);
