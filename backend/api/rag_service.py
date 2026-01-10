@@ -3,25 +3,35 @@ import re
 from django.conf import settings
 from .models import File, Project
 from langchain_groq import ChatGroq
-from langchain_community.embeddings import HuggingFaceEmbeddings 
-from langchain_community.vectorstores import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_pinecone import PineconeVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-
-PERSIST_DIRECTORY = os.path.join(settings.BASE_DIR, 'chroma_db')
-
 def get_embeddings():
-    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    if not settings.GOOGLE_API_KEY:
+        print("RAG Error: GOOGLE_API_KEY not found.")
+        return None
+    return GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=settings.GOOGLE_API_KEY)
 
 def get_vectorstore():
     embeddings = get_embeddings()
-    return Chroma(
-        persist_directory=PERSIST_DIRECTORY, 
-        embedding_function=embeddings
+    if not embeddings:
+        return None
+        
+    index_name = "code-live-index" # Make sure this matches your Pinecone index
+    
+    # Check if PINECONE_API_KEY is set
+    if not settings.PINECONE_API_KEY:
+        print("RAG Error: PINECONE_API_KEY not found.")
+        return None
+
+    return PineconeVectorStore(
+        index_name=index_name,
+        embedding=embeddings
     )
 
 def index_project(project_id):
@@ -57,6 +67,9 @@ def index_project(project_id):
         splits = text_splitter.split_documents(documents)
 
         vectorstore = get_vectorstore()
+        if not vectorstore:
+             return False, "Vector Store initialization failed (Check API Keys)."
+
         vectorstore.add_documents(documents=splits)
         
         print(f"RAG: Successfully indexed {len(splits)} chunks.")
@@ -66,11 +79,14 @@ def index_project(project_id):
         return False, str(e)
 
 def format_docs(docs):
-    return "\n\n".join([f"File: {d.metadata['file_name']}\nContent: {d.page_content}" for d in docs])
+    return "\n\n".join([f"File: {d.metadata.get('file_name', 'unknown')}\nContent: {d.page_content}" for d in docs])
 
 
 def chat_with_project(project_id, user_query, current_file_context=None):
     try:
+        if not settings.GROQ_API_KEY:
+             return "Configuration Error: GROQ_API_KEY not found."
+
         llm = ChatGroq(
             model="llama-3.1-8b-instant", 
             api_key=settings.GROQ_API_KEY,
@@ -97,6 +113,8 @@ def chat_with_project(project_id, user_query, current_file_context=None):
 
         # MODE 2: RAG (Fallback if no file is open or context not sent)
         vectorstore = get_vectorstore()
+        if not vectorstore:
+             return "AI Service Unavailable: Vector database check failed."
         
         try:
             project = Project.objects.get(id=project_id)

@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -120,6 +121,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -228,7 +230,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [(REDIS_HOST, int(REDIS_PORT))],
+            "hosts": [os.environ.get('REDIS_URL', f"redis://{REDIS_HOST}:{REDIS_PORT}")],
         },
     },
 }
@@ -242,3 +244,5 @@ JUDGE0_API_KEY = os.environ.get('JUDGE0_API_KEY')
 LOGIN_REDIRECT_URL = "http://localhost:5173/dashboard"
 
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')

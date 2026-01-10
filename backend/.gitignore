@@ -1,10 +1,20 @@
 # Virtual Environment
 venv/
+venv1/
 
 # Python cache
 __pycache__/
+*.pyc
 
 # Django database file (for development)
 db.sqlite3
 
+# Environment variables
 .env
+
+# Static files
+staticfiles/
+
+# Local Vector DB
+chroma_db/
+chroma.sqlite3
