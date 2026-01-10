@@ -4,19 +4,23 @@ from .models import ChatMessage, Project, Documentation, Membership
 from django.contrib.auth.models import User
 from channels.db import database_sync_to_async
 from collections import defaultdict
-import redis
-from django.conf import settings
-
-import os
-
-# Robust Redis Connection
-redis_url = os.environ.get('REDIS_URL')
-if redis_url:
-    r = redis.from_url(redis_url)
-else:
-    r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
+# Removed module-level Redis connection to prevent import blocking
 
 class ProjectConsumer(AsyncWebsocketConsumer):
+    @property
+    def r(self):
+        # Lazy load Redis connection
+        if not hasattr(self, '_r'):
+            import os
+            import redis
+            from django.conf import settings
+            redis_url = os.environ.get('REDIS_URL')
+            if redis_url:
+                self._r = redis.from_url(redis_url)
+            else:
+                self._r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
+        return self._r
+
     async def connect(self):
         self.project_id = self.scope['url_route']['kwargs']['projectId']
         self.room_group_name = f'project_{self.project_id}'
@@ -35,7 +39,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        count = await database_sync_to_async(r.hincrby)(self.redis_key, str(self.user.id), 1)
+        count = await database_sync_to_async(self.r.hincrby)(self.redis_key, str(self.user.id), 1)
         
         if count == 1:
             await self.broadcast_presence()
@@ -49,16 +53,16 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if self.user.is_authenticated:
-            count = await database_sync_to_async(r.hincrby)(self.redis_key, str(self.user.id), -1)
+            count = await database_sync_to_async(self.r.hincrby)(self.redis_key, str(self.user.id), -1)
             
             if count <= 0:
-                await database_sync_to_async(r.hdel)(self.redis_key, str(self.user.id))
+                await database_sync_to_async(self.r.hdel)(self.redis_key, str(self.user.id))
                 await self.broadcast_presence()
 
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def send_current_presence(self):
-        active_ids_bytes = await database_sync_to_async(r.hkeys)(self.redis_key)
+        active_ids_bytes = await database_sync_to_async(self.r.hkeys)(self.redis_key)
         active_ids = [int(uid.decode('utf-8')) for uid in active_ids_bytes]
         
         await self.send(text_data=json.dumps({
@@ -67,7 +71,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         }))
 
     async def broadcast_presence(self):
-        active_ids_bytes = await database_sync_to_async(r.hkeys)(self.redis_key)
+        active_ids_bytes = await database_sync_to_async(self.r.hkeys)(self.redis_key)
         active_ids = [int(uid.decode('utf-8')) for uid in active_ids_bytes]
             
         await self.channel_layer.group_send(
@@ -97,7 +101,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
     async def collaborator_update(self, event):
         removed_user_id = event.get('removed_user_id')
         if removed_user_id:
-            await database_sync_to_async(r.hdel)(self.redis_key, str(removed_user_id))
+            await database_sync_to_async(self.r.hdel)(self.redis_key, str(removed_user_id))
             await self.broadcast_presence()
         
         await self.send(text_data=json.dumps({
