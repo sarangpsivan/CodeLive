@@ -99,9 +99,10 @@ const EditorPage = () => {
             .then(res => setAllMembers(res.data))
             .catch(err => console.error("Failed to fetch all members", err));
 
-        if (authTokens) {
+        if (authTokens || localStorage.getItem('authTokens')) {
+            const currentAuthTokens = authTokens || JSON.parse(localStorage.getItem('authTokens'));
             const socket = new WebSocket(
-                `${wsBaseUrl}/ws/project/${projectId}/?token=${authTokens.access}`
+                `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`
             );
 
             socketRef.current = socket;

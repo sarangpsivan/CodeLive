@@ -57,7 +57,7 @@ const DashboardPage = () => {
 
             const currentAuthTokens = authTokens || (localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null);
 
-            if (!currentAuthTokens?.access || !user) {
+            if (!currentAuthTokens?.access) {
                 console.log("WebSocket connection skipped (Dashboard): Not logged in.");
                 return;
             }
