@@ -1,3 +1,4 @@
+import os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 # Initialize Django ASAP to allow model imports in middleware
