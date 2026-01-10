@@ -18,7 +18,11 @@ const DashboardPage = () => {
 
     const getWsUrl = () => {
         const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        return apiBase.replace(/^http/, 'ws');
+        // Handle https -> wss (Production) and http -> ws (Development)
+        if (apiBase.startsWith('https')) {
+            return apiBase.replace('https', 'wss');
+        }
+        return apiBase.replace('http', 'ws');
     };
     const wsBaseUrl = import.meta.env.VITE_WS_URL || getWsUrl();
 
