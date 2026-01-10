@@ -248,7 +248,7 @@ const EditorPage = () => {
             if (socketRef.current?.readyState === WebSocket.OPEN) {
                 socketRef.current.send(JSON.stringify({
                     'type': 'code_update',
-                    'message': value,
+                    'content': value,
                     'fileId': activeFileId
                 }));
             }
