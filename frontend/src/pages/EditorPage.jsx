@@ -80,7 +80,11 @@ const EditorPage = () => {
     const { authTokens, user } = useContext(AuthContext);
 
     const executableLanguages = ['python', 'javascript', 'cpp', 'java'];
-    const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+    const getWsUrl = () => {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        return apiBase.replace(/^http/, 'ws');
+    };
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || getWsUrl();
 
     useEffect(() => {
         axiosInstance.get(`/api/projects/${projectId}/`)

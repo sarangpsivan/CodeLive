@@ -31,7 +31,7 @@ const RegisterPage = () => {
         const lastName = nameParts.slice(1).join(' ');
 
         try {
-            await axios.post('http://localhost:8000/api/register/', {
+            await axios.post(`${apiBaseUrl}/api/register/`, {
                 email: email,
                 password: password,
                 first_name: firstName,

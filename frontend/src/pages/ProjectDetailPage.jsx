@@ -44,7 +44,11 @@ const ProjectDetailPage = () => {
     const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, docId: null, docTitle: '' });
 
     const isOwner = project && user && project.owner === user.user_id;
-    const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+    const getWsUrl = () => {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        return apiBase.replace(/^http/, 'ws');
+    };
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || getWsUrl();
 
     const fetchData = () => {
         axiosInstance.get(`/api/projects/${projectId}/`)
