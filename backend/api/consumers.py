@@ -61,6 +61,54 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        message_type = data.get('type')
+
+        if message_type == 'chat_message':
+            message = data.get('message')
+            if message and self.user.is_authenticated:
+                await self.save_chat_message(message, self.user)
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'message': message,
+                        'user_id': self.user.id,
+                        'username': self.user.username,
+                        'timestamp': data.get('timestamp') 
+                    }
+                )
+
+        elif message_type == 'code_update':
+            # Check permissions before broadcasting code updates
+            if self.can_edit:
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'code_update',
+                        'content': data.get('content'),
+                        'sender_id': self.user.id
+                    }
+                )
+    
+    async def chat_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'message': event['message'],
+            'user_id': event['user_id'],
+            'username': event['username'],
+            'timestamp': event.get('timestamp')
+        }))
+
+    async def code_update(self, event):
+        # Don't echo back to sender (handled by frontend usually, but safe to filter if needed)
+        if event['sender_id'] != self.user.id:
+            await self.send(text_data=json.dumps({
+                'type': 'code_update',
+                'content': event['content']
+            }))
+
     async def send_current_presence(self):
         active_ids_bytes = await database_sync_to_async(self.r.hkeys)(self.redis_key)
         active_ids = [int(uid.decode('utf-8')) for uid in active_ids_bytes]

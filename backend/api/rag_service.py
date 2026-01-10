@@ -45,12 +45,23 @@ def index_project(project_id):
 
         documents = []
         for file in files:
-            if not file.content or not file.content.strip():
-                continue 
+            content = file.content
+            if not content:
+                continue
+
+            # Ensure content is a string
+            if isinstance(content, bytes):
+                try:
+                    content = content.decode('utf-8')
+                except UnicodeDecodeError:
+                    continue  # Skip binary files
+
+            if not content.strip():
+                continue
             
             ext = file.name.split('.')[-1] if '.' in file.name else "text"
             doc = Document(
-                page_content=file.content,
+                page_content=content,
                 metadata={
                     "project_id": str(project_id),
                     "file_id": str(file.id),
