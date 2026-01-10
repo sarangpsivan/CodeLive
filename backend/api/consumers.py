@@ -7,7 +7,14 @@ from collections import defaultdict
 import redis
 from django.conf import settings
 
-r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
+import os
+
+# Robust Redis Connection
+redis_url = os.environ.get('REDIS_URL')
+if redis_url:
+    r = redis.from_url(redis_url)
+else:
+    r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
 
 class ProjectConsumer(AsyncWebsocketConsumer):
     async def connect(self):
