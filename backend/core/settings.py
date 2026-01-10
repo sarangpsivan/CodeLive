@@ -137,7 +137,12 @@ if cors_origins == '*':
 else:
     CORS_ALLOWED_ORIGINS = cors_origins.split(',')
     
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173').split(',')
+# Correctly handle SSL when behind a proxy (like Render)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com', 'http://localhost:5173']
+if os.environ.get('CSRF_TRUSTED_ORIGINS'):
+    CSRF_TRUSTED_ORIGINS.extend(os.environ.get('CSRF_TRUSTED_ORIGINS').split(','))
 
 # Django REST Framework Settings
 REST_FRAMEWORK = {
