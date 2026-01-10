@@ -30,5 +30,5 @@ pinecone-client
 google-generativeai
 
 # Utilities
-Pillow==10.2.0
+Pillow==11.1.0
 pyjwt==2.8.0
