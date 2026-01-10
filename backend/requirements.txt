@@ -20,9 +20,9 @@ daphne==4.1.0
 redis==5.0.1
 
 # AI & RAG (Lightweight API-based)
-langchain==0.1.0
-langchain-core==0.1.10
-langchain-community==0.0.13
+langchain
+langchain-core
+langchain-community
 langchain-groq
 langchain-google-genai
 langchain-pinecone
