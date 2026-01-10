@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error("Login failed!", error);
             alert('Login failed. Please check your email and password.');
+            throw error; // Re-throw to let component handle loading state
         }
     };
 

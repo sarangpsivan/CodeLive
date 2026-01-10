@@ -6,16 +6,24 @@ import { FaGithub, FaGoogle } from 'react-icons/fa';
 const LoginPage = () => {
     const { loginUser } = useContext(AuthContext);
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const [isLoading, setIsLoading] = React.useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
         const username = e.target.email.value;
         const password = e.target.password.value;
-        loginUser(username, password);
+        try {
+            await loginUser(username, password);
+        } catch (error) {
+            console.error("Login caught error", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen text-white p-4 font-sans bg-[var(--dark-bg)]"> 
+        <div className="flex flex-col items-center justify-center min-h-screen text-white p-4 font-sans bg-[var(--dark-bg)]">
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <Link to="/" className="text-sm text-gray-400 hover:text-white transition">← Back to Home</Link>
@@ -45,8 +53,12 @@ const LoginPage = () => {
                                 required
                             />
                         </div>
-                        <button type="submit" className="w-full py-3 font-bold text-white bg-[var(--primary-purple)] rounded-lg hover:brightness-110 transition duration-200">
-                            Sign In
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className={`w-full py-3 font-bold text-white bg-[var(--primary-purple)] rounded-lg transition duration-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}
+                        >
+                            {isLoading ? 'Signing In...' : 'Sign In'}
                         </button>
                     </form>
 
