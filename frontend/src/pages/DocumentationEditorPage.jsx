@@ -155,8 +155,8 @@ const DocumentationEditorPage = () => {
 
                 const latestTokens = localStorage.getItem('authTokens');
                 if (event.code !== 1000 && latestTokens) {
-                    console.log("Attempting WebSocket reconnect (Docs) in 5 seconds...");
-                    reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
+                    console.log("Attempting WebSocket reconnect (Docs) in 1 second...");
+                    reconnectTimeoutRef.current = setTimeout(connectWebSocket, 1000);
                 } else {
                     console.log("WebSocket not reconnecting (Docs).");
                 }

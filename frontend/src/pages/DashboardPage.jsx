@@ -95,8 +95,8 @@ const DashboardPage = () => {
                 console.log("WebSocket connection closed (Dashboard).", event.code, event.reason);
                 const latestTokens = localStorage.getItem('authTokens');
                 if (event.code !== 1000 && latestTokens) {
-                    console.log("Attempting WebSocket reconnect (Dashboard) in 5 seconds...");
-                    reconnectTimeoutId = setTimeout(connectWebSocket, 5000);
+                    console.log("Attempting WebSocket reconnect (Dashboard) in 1 second...");
+                    reconnectTimeoutId = setTimeout(connectWebSocket, 1000);
                 } else {
                     console.log("WebSocket not reconnecting (Dashboard).");
                 }
