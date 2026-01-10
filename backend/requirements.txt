@@ -25,6 +25,7 @@ langchain-core
 langchain-community
 langchain-groq
 langchain-google-genai
+uvicorn[standard]
 langchain-pinecone
 langchain-text-splitters
 pinecone-client
