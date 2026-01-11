@@ -29,7 +29,9 @@ uvicorn[standard]
 langchain-pinecone
 langchain-text-splitters
 pinecone-client
-google-generativeai
+pinecone-client
+fastembed
+# google-generativeai  <-- optional now
 
 # Utilities
 Pillow==11.1.0
