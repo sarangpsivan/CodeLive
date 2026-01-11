@@ -313,7 +313,6 @@ class CodeExecutionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        print("DEBUG: Entering CodeExecutionView.post (SYNC) logic")
         language = request.data.get('language', 'python')
         code = request.data.get('code', '')
 
@@ -328,7 +327,6 @@ class CodeExecutionView(APIView):
             return Response({"error": "Unsupported language"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not settings.JUDGE0_API_KEY:
-             print("DEBUG: Judge0 API Key missing in settings")
              return Response({"error": "Server configuration error: JUDGE0_API_KEY is missing."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         url = "https://judge0-ce.p.rapidapi.com/submissions"
@@ -344,18 +342,16 @@ class CodeExecutionView(APIView):
         }
 
         try:
-            print(f"DEBUG: Sending request to Judge0: {url}")
+            # Synchronous request to Judge0
             response = requests.post(url, json=payload, headers=headers)
-            print(f"DEBUG: Judge0 Response Status: {response.status_code}")
             
+            # Check for immediate HTTP errors from Judge0
             if response.status_code == 403:
-                print(f"DEBUG: Judge0 returned 403. Response: {response.text}")
                 return Response({"error": "Judge0 API Key invalid or expired."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
             response.raise_for_status()
             submission_token = response.json().get('token')
             if not submission_token:
-                print("DEBUG: No submission token found")
                 return Response({"error": "Failed to get submission token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             result_url = f"{url}/{submission_token}"
@@ -363,8 +359,6 @@ class CodeExecutionView(APIView):
             poll_interval = 0.5
             total_time = 0
             max_time = 15.0
-            
-            print(f"DEBUG: Polling result at {result_url}")
 
             while total_time < max_time:
                 result_response = requests.get(result_url, headers=headers)
@@ -373,19 +367,15 @@ class CodeExecutionView(APIView):
                 
                 status_id = result_data.get('status', {}).get('id', 0)
                 if status_id > 2: 
-                    print("DEBUG: Execution completed")
                     return Response(result_data)
                 
                 time.sleep(poll_interval)
                 total_time += poll_interval
             
-            print("DEBUG: Execution timed out")
             return Response({"error": "Execution timed out"}, status=status.HTTP_408_REQUEST_TIMEOUT) 
 
         except Exception as e:
-            print(f"CodeExecutionView Error: {str(e)}") 
-            import traceback
-            traceback.print_exc()
+            logger.error(f"CodeExecutionView Error: {str(e)}", exc_info=True)
             return Response({"error": f"Execution failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 # dashbord view
