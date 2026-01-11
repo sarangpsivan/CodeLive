@@ -116,7 +116,7 @@ const EditorPage = () => {
                         const isFileOpen = prevOpenFiles.some(f => f.id === data.fileId);
                         if (isFileOpen) {
                             return prevOpenFiles.map(f =>
-                                f.id === data.fileId ? { ...f, content: data.message } : f
+                                f.id === data.fileId ? { ...f, content: data.content } : f
                             );
                         }
                         return prevOpenFiles;
