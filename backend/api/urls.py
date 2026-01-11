@@ -20,7 +20,7 @@ from .views import (
 )
 from .views import AIIndexProjectView, AIChatView
 from .views import AlertListCreateView, AlertDetailView
-from .views import UserDeleteView, CreateSuperUserView
+from .views import UserDeleteView
 
 urlpatterns = [
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -49,5 +49,4 @@ urlpatterns = [
     path("alerts/<int:pk>/", AlertDetailView.as_view(), name="alert-detail"),
     path("projects/<int:project_id>/preview/<path:file_path>", ProjectPreviewView.as_view(), name="project-preview"),
     path('user/delete/', UserDeleteView.as_view(), name='user-delete'),
-    path('create-superuser/', CreateSuperUserView.as_view(), name='create-superuser'),
 ]
