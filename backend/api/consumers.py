@@ -36,21 +36,19 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
         # Presence Logic with Redis
         try:
-            # 1. Increment connection count for this user in this project
-            user_count_key = f"project:{self.project_id}:user:{self.user.id}:count"
-            count = await self.redis.incr(user_count_key)
-            # Set expiry for cleanup (e.g., 24 hours) just in case
-            await self.redis.expire(user_count_key, 86400)
+            # 1. Add this specific channel to the user's connection set
+            # This is robust: duplicate adds do nothing, removes are specific to this socket
+            user_channels_key = f"project:{self.project_id}:user:{self.user.id}:channels"
+            await self.redis.sadd(user_channels_key, self.channel_name)
+            await self.redis.expire(user_channels_key, 86400) # 24h safety expiry
 
             # 2. Add user to the set of active users for this project
             active_users_key = f"project:{self.project_id}:active_users"
-            if count == 1:
-                # First connection for this user
-                await self.redis.sadd(active_users_key, self.user.id)
-                await self.redis.expire(active_users_key, 86400)
-                
-                # Broadcast join only if it's a new user session
-                # (Optional: can optimize to only broadcast if count == 1)
+            
+            # Check if this is the first connection (cardinality was 0 before add? or just add to active set)
+            # We just add to active set. It's a set, so duplicates are ignored.
+            await self.redis.sadd(active_users_key, self.user.id)
+            await self.redis.expire(active_users_key, 86400)
             
             await self.broadcast_presence()
             
@@ -65,13 +63,16 @@ class ProjectConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if self.user.is_authenticated:
             try:
-                # 1. Decrement connection count
-                user_count_key = f"project:{self.project_id}:user:{self.user.id}:count"
-                count = await self.redis.decr(user_count_key)
+                # 1. Remove this channel from the user's connection set
+                user_channels_key = f"project:{self.project_id}:user:{self.user.id}:channels"
+                await self.redis.srem(user_channels_key, self.channel_name)
+                
+                # 2. Check remaining connections
+                count = await self.redis.scard(user_channels_key)
                 
                 if count <= 0:
                     # User has no more active connections
-                    await self.redis.delete(user_count_key) # Clean up
+                    await self.redis.delete(user_channels_key) # Clean up
                     
                     active_users_key = f"project:{self.project_id}:active_users"
                     await self.redis.srem(active_users_key, self.user.id)
