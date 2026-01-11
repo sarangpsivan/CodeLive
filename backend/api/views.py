@@ -312,7 +312,8 @@ from asgiref.sync import sync_to_async
 class CodeExecutionView(APIView):
     permission_classes = [IsAuthenticated]
 
-    async def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
+        print("DEBUG: Entering CodeExecutionView.post (SYNC) logic")
         language = request.data.get('language', 'python')
         code = request.data.get('code', '')
 
@@ -327,6 +328,7 @@ class CodeExecutionView(APIView):
             return Response({"error": "Unsupported language"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not settings.JUDGE0_API_KEY:
+             print("DEBUG: Judge0 API Key missing in settings")
              return Response({"error": "Server configuration error: JUDGE0_API_KEY is missing."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         url = "https://judge0-ce.p.rapidapi.com/submissions"
@@ -342,17 +344,10 @@ class CodeExecutionView(APIView):
         }
 
         try:
-            print("DEBUG: Entering CodeExecutionView.post logic")
-            # Wrap synchronous request in sync_to_async to avoid blocking
-            # Ideally use aiohttp/httpx but this is a safer minimal change
-            def make_request(method, url, **kwargs):
-                return requests.request(method, url, **kwargs)
-
             print(f"DEBUG: Sending request to Judge0: {url}")
-            response = await sync_to_async(make_request)('POST', url, json=payload, headers=headers)
+            response = requests.post(url, json=payload, headers=headers)
             print(f"DEBUG: Judge0 Response Status: {response.status_code}")
             
-            # Check for immediate HTTP errors from Judge0
             if response.status_code == 403:
                 print(f"DEBUG: Judge0 returned 403. Response: {response.text}")
                 return Response({"error": "Judge0 API Key invalid or expired."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -372,7 +367,7 @@ class CodeExecutionView(APIView):
             print(f"DEBUG: Polling result at {result_url}")
 
             while total_time < max_time:
-                result_response = await sync_to_async(make_request)('GET', result_url, headers=headers)
+                result_response = requests.get(result_url, headers=headers)
                 result_response.raise_for_status()
                 result_data = result_response.json()
                 
@@ -381,7 +376,7 @@ class CodeExecutionView(APIView):
                     print("DEBUG: Execution completed")
                     return Response(result_data)
                 
-                await asyncio.sleep(poll_interval)
+                time.sleep(poll_interval)
                 total_time += poll_interval
             
             print("DEBUG: Execution timed out")
