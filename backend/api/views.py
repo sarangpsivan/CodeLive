@@ -369,6 +369,7 @@ class CodeExecutionView(APIView):
             return Response({"error": "Execution timed out"}, status=status.HTTP_408_REQUEST_TIMEOUT) 
 
         except Exception as e:
+            print(f"CodeExecutionView Error: {str(e)}") # Log to server console
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 # dashbord view

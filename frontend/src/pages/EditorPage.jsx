@@ -299,7 +299,8 @@ const EditorPage = () => {
 
             setTerminalLines([{ type: 'output', content: result || `Execution finished with status: ${status?.description || 'unknown'}` }]);
         } catch (error) {
-            setTerminalLines([{ type: 'output', content: "An error occurred while executing the code." }]);
+            const errorMessage = error.response?.data?.error || "An error occurred while executing the code.";
+            setTerminalLines([{ type: 'output', content: `Error: ${errorMessage}` }]);
         }
         finally {
             setIsExecuting(false);
