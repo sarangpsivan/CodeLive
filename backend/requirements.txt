@@ -24,14 +24,11 @@ langchain
 langchain-core
 langchain-community
 langchain-groq
-langchain-google-genai
 uvicorn[standard]
 langchain-pinecone
 langchain-text-splitters
 pinecone-client
-pinecone-client
 fastembed
-# google-generativeai  <-- optional now
 
 # Utilities
 Pillow==11.1.0
