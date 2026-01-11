@@ -1,16 +1,15 @@
-import json
-from channels.generic.websocket import AsyncWebsocketConsumer
-from .models import ChatMessage, Project, Documentation, Membership
-from django.contrib.auth.models import User
-from channels.db import database_sync_to_async
-from collections import defaultdict
-# Removed module-level Redis connection to prevent import blocking
+import redis.asyncio as redis
+from django.conf import settings
+
+# Initialize Redis client
+# Use REDIS_URL from settings if available, else fallback to localhost
+REDIS_URL = getattr(settings, 'REDIS_URL', 'redis://127.0.0.1:6379/1')
 
 class ProjectConsumer(AsyncWebsocketConsumer):
-    # In-memory storage for presence (safe for single-instance deployment)
-    # Structure: presence_data[project_id][user_id] = set(channel_names)
-    presence_data = defaultdict(lambda: defaultdict(set))
-
+    # Redis client placeholder - initialized on class level or instance?
+    # Better to use a connection pool or simple client. 
+    # django-channels layers use redis, so we can assume a redis server is reachable.
+    
     async def connect(self):
         self.project_id = self.scope['url_route']['kwargs']['projectId']
         self.room_group_name = f'project_{self.project_id}'
@@ -22,19 +21,36 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             print("WS-Consumer: Rejecting anonymous user")
             await self.close()
             return
+            
+        self.redis = redis.from_url(REDIS_URL)
 
         self.can_edit = await self.check_edit_permission(self.user.id, self.project_id)
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        # Add connection to presence tracker
-        ProjectConsumer.presence_data[self.project_id][self.user.id].add(self.channel_name)
-        
-        # Determine if this user was already active (had other tabs)
-        # If it's the first connection (len was 0 before, now 1), broadcast join
-        # But here we just broadcast the full list every time to be safe and simple
-        await self.broadcast_presence()
+        # Presence Logic with Redis
+        try:
+            # 1. Increment connection count for this user in this project
+            user_count_key = f"project:{self.project_id}:user:{self.user.id}:count"
+            count = await self.redis.incr(user_count_key)
+            # Set expiry for cleanup (e.g., 24 hours) just in case
+            await self.redis.expire(user_count_key, 86400)
+
+            # 2. Add user to the set of active users for this project
+            active_users_key = f"project:{self.project_id}:active_users"
+            if count == 1:
+                # First connection for this user
+                await self.redis.sadd(active_users_key, self.user.id)
+                await self.redis.expire(active_users_key, 86400)
+                
+                # Broadcast join only if it's a new user session
+                # (Optional: can optimize to only broadcast if count == 1)
+            
+            await self.broadcast_presence()
+            
+        except Exception as e:
+            print(f"Redis Error in connect: {e}")
 
         await self.send(text_data=json.dumps({
             'type': 'permission_status',
@@ -43,27 +59,33 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if self.user.is_authenticated:
-            # Remove this specific connection
-            user_channels = ProjectConsumer.presence_data[self.project_id][self.user.id]
-            user_channels.discard(self.channel_name)
+            try:
+                # 1. Decrement connection count
+                user_count_key = f"project:{self.project_id}:user:{self.user.id}:count"
+                count = await self.redis.decr(user_count_key)
+                
+                if count <= 0:
+                    # User has no more active connections
+                    await self.redis.delete(user_count_key) # Clean up
+                    
+                    active_users_key = f"project:{self.project_id}:active_users"
+                    await self.redis.srem(active_users_key, self.user.id)
+                    
+                    # Broadcast leaving
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'collaborator_update',
+                            'message': f'{self.user.username} has left.',
+                            'removed_user_id': self.user.id
+                        }
+                    )
+            except Exception as e:
+                print(f"Redis Error in disconnect: {e}")
             
-            # If user has no more connections, remove them from the project list
-            if not user_channels:
-                del ProjectConsumer.presence_data[self.project_id][self.user.id]
-                
-                # Verify if project is empty to clean up memory (optional but good)
-                if not ProjectConsumer.presence_data[self.project_id]:
-                    del ProjectConsumer.presence_data[self.project_id]
-                
-                # Broadcast leaving ONLY if they are truly gone (no tabs left)
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        'type': 'collaborator_update',
-                        'message': f'{self.user.username} has left.',
-                        'removed_user_id': self.user.id
-                    }
-                )
+            finally:
+                # Close redis connection
+                await self.redis.close()
 
             await self.broadcast_presence()
 
@@ -120,14 +142,28 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             }))
 
     async def send_current_presence(self):
-        active_ids = list(ProjectConsumer.presence_data[self.project_id].keys())
+        active_ids = []
+        try:
+             active_users_key = f"project:{self.project_id}:active_users"
+             members = await self.redis.smembers(active_users_key)
+             active_ids = [int(uid) for uid in members]
+        except Exception as e:
+             print(f"Redis Error in send_current_presence: {e}")
+
         await self.send(text_data=json.dumps({
             'type': 'presence_update',
             'active_user_ids': active_ids
         }))
 
     async def broadcast_presence(self):
-        active_ids = list(ProjectConsumer.presence_data[self.project_id].keys())
+        active_ids = []
+        try:
+             active_users_key = f"project:{self.project_id}:active_users"
+             members = await self.redis.smembers(active_users_key)
+             active_ids = [int(uid) for uid in members]
+        except Exception as e:
+             print(f"Redis Error in broadcast_presence: {e}")
+             
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -157,10 +193,20 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         
         # If the user was removed by ID (e.g. kicked or just left), we might want to cleanup presence
         # But 'disconnect' handles the primary cleanup. This is mostly for broadcasting the message.
-        if removed_user_id and removed_user_id in ProjectConsumer.presence_data[self.project_id]:
+        if removed_user_id:
              # Force remove from presence if it was an explicit removal event
-             del ProjectConsumer.presence_data[self.project_id][removed_user_id]
-             await self.broadcast_presence()
+             try:
+                 active_users_key = f"project:{self.project_id}:active_users"
+                 user_count_key = f"project:{self.project_id}:user:{removed_user_id}:count"
+                 
+                 # Check if user is actually in the list
+                 is_member = await self.redis.sismember(active_users_key, removed_user_id)
+                 if is_member:
+                     await self.redis.srem(active_users_key, removed_user_id)
+                     await self.redis.delete(user_count_key)
+                     await self.broadcast_presence()
+             except Exception as e:
+                 print(f"Redis Error in collaborator_update: {e}")
 
         await self.send(text_data=json.dumps({
             'type': 'collaborator_update',
