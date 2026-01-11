@@ -342,15 +342,25 @@ class CodeExecutionView(APIView):
         }
 
         try:
+            print("DEBUG: Entering CodeExecutionView.post logic")
             # Wrap synchronous request in sync_to_async to avoid blocking
             # Ideally use aiohttp/httpx but this is a safer minimal change
             def make_request(method, url, **kwargs):
                 return requests.request(method, url, **kwargs)
 
+            print(f"DEBUG: Sending request to Judge0: {url}")
             response = await sync_to_async(make_request)('POST', url, json=payload, headers=headers)
+            print(f"DEBUG: Judge0 Response Status: {response.status_code}")
+            
+            # Check for immediate HTTP errors from Judge0
+            if response.status_code == 403:
+                print(f"DEBUG: Judge0 returned 403. Response: {response.text}")
+                return Response({"error": "Judge0 API Key invalid or expired."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
             response.raise_for_status()
             submission_token = response.json().get('token')
             if not submission_token:
+                print("DEBUG: No submission token found")
                 return Response({"error": "Failed to get submission token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             result_url = f"{url}/{submission_token}"
@@ -358,22 +368,29 @@ class CodeExecutionView(APIView):
             poll_interval = 0.5
             total_time = 0
             max_time = 15.0
+            
+            print(f"DEBUG: Polling result at {result_url}")
 
             while total_time < max_time:
                 result_response = await sync_to_async(make_request)('GET', result_url, headers=headers)
                 result_response.raise_for_status()
                 result_data = result_response.json()
                 
-                if result_data.get('status', {}).get('id', 0) > 2: 
+                status_id = result_data.get('status', {}).get('id', 0)
+                if status_id > 2: 
+                    print("DEBUG: Execution completed")
                     return Response(result_data)
                 
                 await asyncio.sleep(poll_interval)
                 total_time += poll_interval
             
+            print("DEBUG: Execution timed out")
             return Response({"error": "Execution timed out"}, status=status.HTTP_408_REQUEST_TIMEOUT) 
 
         except Exception as e:
-            logger.error(f"CodeExecutionView Error: {str(e)}", exc_info=True)
+            print(f"CodeExecutionView Error: {str(e)}") 
+            import traceback
+            traceback.print_exc()
             return Response({"error": f"Execution failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 # dashbord view
