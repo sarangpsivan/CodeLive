@@ -40,7 +40,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             # This is robust: duplicate adds do nothing, removes are specific to this socket
             user_channels_key = f"project:{self.project_id}:user:{self.user.id}:channels"
             await self.redis.sadd(user_channels_key, self.channel_name)
-            await self.redis.expire(user_channels_key, 86400) # 24h safety expiry
+            await self.redis.expire(user_channels_key, 300) # 5 min auto-cleanup
 
             # 2. Add user to the set of active users for this project
             active_users_key = f"project:{self.project_id}:active_users"
@@ -48,7 +48,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             # Check if this is the first connection (cardinality was 0 before add? or just add to active set)
             # We just add to active set. It's a set, so duplicates are ignored.
             await self.redis.sadd(active_users_key, self.user.id)
-            await self.redis.expire(active_users_key, 86400)
+            await self.redis.expire(active_users_key, 300)
             
             await self.broadcast_presence()
             
@@ -203,13 +203,13 @@ class ProjectConsumer(AsyncWebsocketConsumer):
              # Force remove from presence if it was an explicit removal event
              try:
                  active_users_key = f"project:{self.project_id}:active_users"
-                 user_count_key = f"project:{self.project_id}:user:{removed_user_id}:count"
+                 user_channels_key = f"project:{self.project_id}:user:{removed_user_id}:channels"
                  
                  # Check if user is actually in the list
                  is_member = await self.redis.sismember(active_users_key, removed_user_id)
                  if is_member:
                      await self.redis.srem(active_users_key, removed_user_id)
-                     await self.redis.delete(user_count_key)
+                     await self.redis.delete(user_channels_key)
                      await self.broadcast_presence()
              except Exception as e:
                  print(f"Redis Error in collaborator_update: {e}")
