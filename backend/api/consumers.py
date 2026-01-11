@@ -1,3 +1,8 @@
+import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+from .models import ChatMessage, Project, Documentation, Membership
+from django.contrib.auth.models import User
+from channels.db import database_sync_to_async
 import redis.asyncio as redis
 from django.conf import settings
 
