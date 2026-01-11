@@ -96,6 +96,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
                     {
                         'type': 'code_update',
                         'content': data.get('content'),
+                        'fileId': data.get('fileId'),
                         'sender_id': self.user.id
                     }
                 )
@@ -114,7 +115,8 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         if event['sender_id'] != self.user.id:
             await self.send(text_data=json.dumps({
                 'type': 'code_update',
-                'content': event['content']
+                'content': event['content'],
+                'fileId': event.get('fileId')
             }))
 
     async def send_current_presence(self):

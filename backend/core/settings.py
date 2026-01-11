@@ -230,14 +230,41 @@ SIMPLE_JWT = {
 ASGI_APPLICATION = "core.asgi.application"
 
 # Channel Layer
-REDIS_HOST = os.environ.get('REDIS_HOST', '127.0.0.1')
-REDIS_PORT = os.environ.get('REDIS_PORT', 6379)
+REDIS_URL = os.environ.get('REDIS_URL')
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
-}
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        },
+    }
+else:
+    REDIS_HOST = os.environ.get('REDIS_HOST', '127.0.0.1')
+    REDIS_PORT = os.environ.get('REDIS_PORT', 6379)
+    # Check if we are locally developing with a redis instance
+    # For now, if no REDIS_URL, trying host/port or fallback to memory
+    try:
+        # Simple check if we want to force redis via host/port
+        if os.environ.get('USE_REDIS_LOCAL'):
+             CHANNEL_LAYERS = {
+                "default": {
+                    "BACKEND": "channels_redis.core.RedisChannelLayer",
+                    "CONFIG": {
+                        "hosts": [(REDIS_HOST, int(REDIS_PORT))],
+                    },
+                },
+            }
+        else:
+             raise Exception("Use In-Memory")
+    except:
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels.layers.InMemoryChannelLayer",
+            },
+        }
 
 ACCOUNT_ADAPTER = 'api.adapters.CustomAccountAdapter'
 
