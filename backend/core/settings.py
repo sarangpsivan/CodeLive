@@ -272,7 +272,7 @@ SOCIALACCOUNT_ADAPTER = 'api.adapters.CustomSocialAccountAdapter'
 
 JUDGE0_API_KEY = os.environ.get('JUDGE0_API_KEY')
 
-LOGIN_REDIRECT_URL = "http://localhost:5173/dashboard"
+LOGIN_REDIRECT_URL = f"{FRONTEND_URL}/dashboard"
 
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
 PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
