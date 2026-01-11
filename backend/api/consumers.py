@@ -181,6 +181,17 @@ class ProjectConsumer(AsyncWebsocketConsumer):
            'unresolved_count': event['unresolved_count'] 
        }))
 
+    async def file_tree_update(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'file_tree_update',
+            'message': event['message']
+        }))
+
+    async def new_join_request(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'new_join_request'
+        }))
+
     @database_sync_to_async
     def save_chat_message(self, message, user):
         try:
