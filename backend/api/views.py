@@ -301,6 +301,10 @@ class FolderDetailView(generics.RetrieveDestroyAPIView):
         send_file_tree_update_signal(project_id, 'A folder has been deleted.')
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Code Execution View
 import asyncio
 from asgiref.sync import sync_to_async
@@ -323,7 +327,7 @@ class CodeExecutionView(APIView):
             return Response({"error": "Unsupported language"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not settings.JUDGE0_API_KEY:
-             return Response({"error": "Server configuration error: JUDGE0API Key is missing."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+             return Response({"error": "Server configuration error: JUDGE0_API_KEY is missing."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         url = "https://judge0-ce.p.rapidapi.com/submissions"
         payload = {
@@ -369,8 +373,8 @@ class CodeExecutionView(APIView):
             return Response({"error": "Execution timed out"}, status=status.HTTP_408_REQUEST_TIMEOUT) 
 
         except Exception as e:
-            print(f"CodeExecutionView Error: {str(e)}") # Log to server console
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"CodeExecutionView Error: {str(e)}", exc_info=True)
+            return Response({"error": f"Execution failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 # dashbord view
 
