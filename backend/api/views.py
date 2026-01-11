@@ -322,6 +322,9 @@ class CodeExecutionView(APIView):
         if not language_id:
             return Response({"error": "Unsupported language"}, status=status.HTTP_400_BAD_REQUEST)
 
+        if not settings.JUDGE0_API_KEY:
+             return Response({"error": "Server configuration error: JUDGE0API Key is missing."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         url = "https://judge0-ce.p.rapidapi.com/submissions"
         payload = {
             "language_id": language_id,
