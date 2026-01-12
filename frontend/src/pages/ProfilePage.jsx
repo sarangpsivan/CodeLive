@@ -109,7 +109,7 @@ const ProfilePage = () => {
     ];
 
     return (
-        <div className="h-full bg-[var(--dark-bg)] text-white font-sans flex flex-col overflow-y-auto lg:overflow-hidden">
+        <div className="h-full bg-[var(--dark-bg)] text-white font-sans flex flex-col overflow-y-auto">
 
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
@@ -126,7 +126,7 @@ const ProfilePage = () => {
             </div>
 
             <div className="flex-grow pb-8 px-4 lg:px-8">
-                <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 h-auto lg:h-full">
+                <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-full">
 
                     <nav className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-2">
                         {tabs.map(tab => (
@@ -154,7 +154,7 @@ const ProfilePage = () => {
                     </nav>
 
                     <div className="flex-1 bg-[var(--dark-card)] rounded-2xl border border-gray-800 shadow-xl overflow-hidden flex flex-col min-h-[500px]">
-                        <div className="flex-1 p-6 lg:p-8 overflow-y-auto scrollbar-hide">
+                        <div className="flex-1 p-6 lg:p-8">
 
                             {status && (
                                 <div className={`mb-6 p-3 rounded-lg text-sm font-bold text-center ${status.includes('Failed') ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
