@@ -191,6 +191,7 @@ ALLAUTH_HEADLESS_CLIENT_URLS = {
 REST_AUTH = {
     'USE_JWT': True,
     'JWT_AUTH_HTTPONLY': False,
+    'PASSWORD_CHANGE_SERIALIZER': 'api.serializers.CustomPasswordChangeSerializer',
 }
 
 # JWT configuration

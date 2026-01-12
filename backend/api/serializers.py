@@ -2,18 +2,32 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Project, Membership, Folder, File, Documentation, Alert
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from dj_rest_auth.serializers import PasswordChangeSerializer
+
+class CustomPasswordChangeSerializer(PasswordChangeSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        user = self.context.get('request').user
+        if user and not user.has_usable_password():
+            self.fields['old_password'].required = False
+            self.fields['old_password'].allow_blank = True
 
 class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
     last_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
+    has_usable_password = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "username", "email", "password", "first_name", "last_name"]
+        fields = ["id", "username", "email", "password", "first_name", "last_name", "has_usable_password"]
         extra_kwargs = {
             "password": {"write_only": True},
             "username": {"read_only": True}
         }
+
+    def get_has_usable_password(self, obj):
+        return obj.has_usable_password()
 
     def validate_password(self, value):
         from django.contrib.auth.password_validation import validate_password

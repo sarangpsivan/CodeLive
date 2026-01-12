@@ -18,6 +18,7 @@ const ProfilePage = () => {
     const [projects, setProjects] = useState([]);
     const [status, setStatus] = useState('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [hasUsablePassword, setHasUsablePassword] = useState(true);
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -27,6 +28,7 @@ const ProfilePage = () => {
 
                 setFirstName(userData.first_name || '');
                 setLastName(userData.last_name || '');
+                setHasUsablePassword(userData.has_usable_password);
                 setUserDirectly(prev => ({ ...prev, ...userData }));
 
             } catch (error) {
@@ -82,6 +84,7 @@ const ProfilePage = () => {
                 new_password2: confirmPassword
             });
             setStatus('Password changed successfully!');
+            setHasUsablePassword(true);
             setOldPassword('');
             setNewPassword('');
             setConfirmPassword('');
@@ -206,11 +209,13 @@ const ProfilePage = () => {
 
                             {activeTab === 'security' && (
                                 <form onSubmit={handleChangePassword} className="space-y-6 max-w-lg">
-                                    <h2 className="text-xl font-bold border-b border-gray-700 pb-4 mb-6">Change Password</h2>
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Current Password</label>
-                                        <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[var(--primary-purple)] focus:outline-none" />
-                                    </div>
+                                    <h2 className="text-xl font-bold border-b border-gray-700 pb-4 mb-6">{hasUsablePassword ? 'Change Password' : 'Set Password'}</h2>
+                                    {hasUsablePassword && (
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Current Password</label>
+                                            <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[var(--primary-purple)] focus:outline-none" />
+                                        </div>
+                                    )}
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-2">New Password</label>
                                         <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[var(--primary-purple)] focus:outline-none" />
@@ -221,7 +226,7 @@ const ProfilePage = () => {
                                         <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[var(--primary-purple)] focus:outline-none" />
                                     </div>
                                     <button type="submit" className="px-6 py-3 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition flex items-center gap-2">
-                                        <FaLock /> Update Password
+                                        <FaLock /> {hasUsablePassword ? 'Update Password' : 'Set Password'}
                                     </button>
                                 </form>
                             )}
