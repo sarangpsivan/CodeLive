@@ -109,7 +109,7 @@ const ProfilePage = () => {
     ];
 
     return (
-        <div className="h-full bg-[var(--dark-bg)] text-white font-sans flex flex-col overflow-y-auto">
+        <div className="h-full bg-[var(--dark-bg)] text-white font-sans flex flex-col overflow-y-auto scrollbar-hide">
 
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
