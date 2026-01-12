@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { FaCode, FaSignOutAlt, FaUserClock, FaFileAlt, FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
+import { timeAgo } from '../utils/dateUtils';
 import CollaboratorsTab from '../components/CollaboratorsTab';
 import SettingsTab from '../components/SettingsTab';
 import InviteModal from '../components/InviteModal';
@@ -10,22 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import AuthContext from '../context/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 
-function timeAgo(dateString) {
-    if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    const seconds = Math.floor((new Date() - date) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    return Math.floor(seconds) + " seconds ago";
-}
+
 
 const ProjectDetailPage = () => {
     const { projectId } = useParams();
@@ -245,7 +231,7 @@ const ProjectDetailPage = () => {
                                     {activeMembers.length} active
                                 </span>
                                 <span className="text-gray-600">|</span>
-                                <span>Last updated 2 hours ago</span>
+                                <span>Last updated {timeAgo(project.updated_at)}</span>
                             </div>
                         </div>
 
