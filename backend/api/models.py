@@ -6,6 +6,7 @@ class Project(models.Model):
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="owned_projects")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     room_code = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
