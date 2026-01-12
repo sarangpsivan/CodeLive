@@ -6,7 +6,7 @@ django-cors-headers==4.3.1
 django-allauth>=0.63.0
 dj-rest-auth>=6.0.0
 dj-database-url==2.1.0
-psycopg2-binary==2.9.9
+psycopg2-binary
 gunicorn==21.2.0
 uvicorn==0.27.0
 whitenoise==6.6.0
