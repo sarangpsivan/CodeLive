@@ -230,10 +230,10 @@ const DocumentationEditorPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white p-6 font-sans">
+        <div className="min-h-screen bg-black text-white p-4 lg:p-6 font-sans">
             <style>{quillStyle}</style>
 
-            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 lg:gap-0 mb-6 pb-4 border-b border-gray-700">
                 <div>
                     <button
                         onClick={() => navigate(`/project/${projectId}`)}
@@ -246,12 +246,12 @@ const DocumentationEditorPage = () => {
                         value={title}
                         onChange={handleTitleChange}
                         placeholder="Document Title"
-                        className="text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 w-full p-0"
+                        className="text-2xl lg:text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 w-full p-0 break-words"
                         disabled={status === 'Loading...'}
                     />
                     <p className="text-xs text-gray-500 mt-1">Project: {projectName}</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:gap-4 w-full lg:w-auto">
                     <span className={`text-sm italic ${status === 'Unsaved changes' ? 'text-yellow-400' :
                         status.startsWith('Error') ? 'text-red-400' :
                             status.startsWith('Synced:') ? 'text-green-400' :
@@ -265,7 +265,7 @@ const DocumentationEditorPage = () => {
                         className={`flex items-center gap-2 px-4 py-2 font-semibold rounded-lg transition ${(!hasUnsavedChanges || isSaving)
                             ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                             : 'bg-[var(--primary-purple)] text-white hover:brightness-110'
-                            }`}
+                            } w-full sm:w-auto justify-center`}
                     >
                         <FaSave />
                         {isSaving ? 'Saving...' : 'Save Changes'}
