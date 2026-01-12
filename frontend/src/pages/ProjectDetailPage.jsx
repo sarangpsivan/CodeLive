@@ -215,16 +215,16 @@ const ProjectDetailPage = () => {
                 message={`Are you sure you want to permanently delete "${confirmDeleteModal.docTitle}"? This action cannot be undone.`}
             />
 
-            <main className="flex-1 p-8 text-white font-sans flex flex-col h-full">
+            <main className="flex-1 p-4 lg:p-8 text-white font-sans flex flex-col h-full overflow-y-auto lg:overflow-visible">
 
                 <div className="flex-shrink-0">
-                    <div className="flex justify-between items-center mb-8">
+                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6 lg:gap-0 mb-8">
                         <div>
                             <Link to="/dashboard" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-4">
                                 <FaSignOutAlt /> Exit
                             </Link>
-                            <h1 className="text-5xl font-bold">{project.name}</h1>
-                            <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">
+                            <h1 className="text-3xl lg:text-5xl font-bold break-words">{project.name}</h1>
+                            <div className="flex flex-wrap items-center gap-2 lg:gap-4 mt-3 text-xs lg:text-sm text-gray-400">
                                 <span>{project.member_count || 0} collaborators</span>
                                 <span className="text-gray-600">|</span>
                                 <span className="bg-green-500/20 text-green-300 text-xs font-semibold px-2.5 py-1 rounded-full">
@@ -235,11 +235,11 @@ const ProjectDetailPage = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 flex-shrink-0">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:gap-4 flex-shrink-0 w-full lg:w-auto">
                             {isOwner && (
                                 <button
                                     onClick={() => setIsRequestsModalOpen(true)}
-                                    className="relative flex items-center gap-2 px-4 py-2 bg-dark-card font-bold rounded-lg border border-gray-700 hover:bg-gray-800 transition"
+                                    className="relative flex items-center justify-center gap-2 px-4 py-3 lg:py-2 bg-dark-card font-bold rounded-lg border border-gray-700 hover:bg-gray-800 transition"
                                 >
                                     <FaUserClock /> Join Requests
                                     {requestCount > 0 && (
