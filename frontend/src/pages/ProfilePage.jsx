@@ -109,7 +109,7 @@ const ProfilePage = () => {
     ];
 
     return (
-        <div className="h-full bg-[var(--dark-bg)] text-white font-sans flex flex-col overflow-hidden">
+        <div className="h-full bg-[var(--dark-bg)] text-white font-sans flex flex-col overflow-y-auto lg:overflow-hidden">
 
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
@@ -119,16 +119,16 @@ const ProfilePage = () => {
                 message="Are you sure you want to permanently delete your account? This will delete all projects where you are the sole owner. This action cannot be undone."
             />
 
-            <div className="flex-shrink-0 p-8 pb-4">
+            <div className="flex-shrink-0 p-4 lg:p-8 pb-4">
                 <div className="max-w-5xl mx-auto w-full">
                     <h1 className="text-3xl font-bold">Account Settings</h1>
                 </div>
             </div>
 
-            <div className="flex-grow overflow-hidden pb-8 px-8">
-                <div className="max-w-5xl mx-auto h-full flex flex-col md:flex-row gap-8">
+            <div className="flex-grow pb-8 px-4 lg:px-8">
+                <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 h-auto lg:h-full">
 
-                    <nav className="w-full md:w-64 flex-shrink-0 flex flex-col gap-2">
+                    <nav className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-2">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -153,8 +153,8 @@ const ProfilePage = () => {
                         </button>
                     </nav>
 
-                    <div className="flex-1 bg-[var(--dark-card)] rounded-2xl border border-gray-800 shadow-xl overflow-hidden flex flex-col">
-                        <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
+                    <div className="flex-1 bg-[var(--dark-card)] rounded-2xl border border-gray-800 shadow-xl overflow-hidden flex flex-col min-h-[500px]">
+                        <div className="flex-1 p-6 lg:p-8 overflow-y-auto scrollbar-hide">
 
                             {status && (
                                 <div className={`mb-6 p-3 rounded-lg text-sm font-bold text-center ${status.includes('Failed') ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
@@ -188,7 +188,7 @@ const ProfilePage = () => {
 
                                     <div className="pt-8 mt-8 border-t border-gray-700">
                                         <h3 className="text-red-500 font-bold text-lg mb-2">Danger Zone</h3>
-                                        <div className="bg-red-900/10 border border-red-900/50 rounded-xl p-6 flex justify-between items-center">
+                                        <div className="bg-red-900/10 border border-red-900/50 rounded-xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                             <div>
                                                 <h4 className="font-semibold text-gray-200">Delete Account</h4>
                                                 <p className="text-sm text-gray-400 mt-1">Permanently delete your account and all your data.</p>
