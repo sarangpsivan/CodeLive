@@ -129,9 +129,9 @@ const DashboardPage = () => {
                 isOpen={isJoinModalOpen}
                 onClose={() => setIsJoinModalOpen(false)}
             />
-            <main className="flex flex-col lg:flex-row gap-8 p-8 font-sans h-full overflow-hidden">
+            <main className="flex flex-col lg:flex-row gap-8 p-4 lg:p-8 font-sans h-full overflow-y-auto lg:overflow-hidden">
 
-                <aside className="w-full lg:w-80 bg-[var(--dark-card)] rounded-xl p-6 border border-gray-800 flex flex-col flex-shrink-0 h-full overflow-hidden">
+                <aside className="w-full lg:w-80 bg-[var(--dark-card)] rounded-xl p-6 border border-gray-800 flex flex-col flex-shrink-0 h-[400px] lg:h-full overflow-hidden">
                     <h2 className="text-lg font-semibold mb-6 px-3 text-white flex-shrink-0">Your Projects</h2>
 
                     <nav className="flex-grow space-y-2 overflow-y-auto scrollbar-hide">
@@ -147,7 +147,7 @@ const DashboardPage = () => {
                     </button>
                 </aside>
 
-                <section className="flex-1 overflow-y-auto scrollbar-hide">
+                <section className="flex-1 lg:overflow-y-auto scrollbar-hide">
                     <div className="mb-10">
                         <h1 className="text-4xl font-bold text-white">Welcome back, <span className="text-[var(--accent-lavender)]">{user?.first_name || user?.username}</span>!</h1>
                         <p className="text-gray-400 mt-2">Ready to build something amazing? Create a new project or join an existing one.</p>
