@@ -12,6 +12,12 @@ class CustomPasswordChangeSerializer(PasswordChangeSerializer):
             self.fields['old_password'].required = False
             self.fields['old_password'].allow_blank = True
 
+    def validate_old_password(self, value):
+        user = self.context.get('request').user
+        if user and not user.has_usable_password():
+            return value
+        return super().validate_old_password(value)
+
 class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
     last_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
