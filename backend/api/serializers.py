@@ -8,15 +8,23 @@ class CustomPasswordChangeSerializer(PasswordChangeSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         user = self.context.get('request').user
+        print(f"DEBUG: User={user}, has_usable_password={user.has_usable_password() if user else 'None'}")
         if user and not user.has_usable_password():
+            print("DEBUG: Making old_password optional")
             self.fields['old_password'].required = False
             self.fields['old_password'].allow_blank = True
 
     def validate_old_password(self, value):
         user = self.context.get('request').user
+        print(f"DEBUG: validate_old_password value='{value}'")
         if user and not user.has_usable_password():
+            print("DEBUG: Bypassing old_password validation")
             return value
-        return super().validate_old_password(value)
+        try:
+            return super().validate_old_password(value)
+        except serializers.ValidationError as e:
+            print(f"DEBUG: validation failed: {e}")
+            raise e
 
 class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
