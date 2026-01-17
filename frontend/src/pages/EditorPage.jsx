@@ -201,6 +201,11 @@ const EditorPage = () => {
     };
 
     const handleFileSelect = (fileId) => {
+        // On mobile, close sidebar after selecting a file
+        if (window.innerWidth < 768) {
+             setActiveActivityBarTab(null);
+        }
+        
         const existingFile = openFiles.find(f => f.id === fileId);
         if (existingFile) {
             setActiveFileId(fileId);
@@ -327,7 +332,7 @@ const EditorPage = () => {
                 activeFileName={activeFile?.name || ''}
                 activeMembers={activeMembers}
             />
-            <div className="flex flex-grow overflow-hidden">
+            <div className="flex flex-grow overflow-hidden relative">
                 <ActivityBar
                     activeTab={activeActivityBarTab}
                     onTabChange={handleTabChange}
@@ -337,7 +342,7 @@ const EditorPage = () => {
                     hasUnreadAlerts={hasUnreadAlerts}
                     hasUnreadChat={hasUnreadChat}
                 />
-                <div className="w-80 flex-shrink-0 bg-dark-card border-r border-gray-700">
+                <div className={`${activeActivityBarTab ? 'block' : 'hidden'} md:block w-full md:w-80 flex-shrink-0 bg-dark-card border-r border-gray-700 absolute md:static z-20 h-full`}>
                     {activeActivityBarTab === 'explorer' && (
                         <FileExplorer projectId={projectId} onFileSelect={handleFileSelect} refreshKey={explorerRefreshKey} canEdit={canEdit} />
                     )}
@@ -355,6 +360,13 @@ const EditorPage = () => {
                             refreshKey={alertRefreshKey}
                         />
                     )}
+                    {/* Mobile close button for sidebar */}
+                    <button 
+                        onClick={() => setActiveActivityBarTab(null)}
+                        className="md:hidden absolute top-2 right-2 p-2 bg-red-500/20 text-red-400 rounded-full"
+                    >
+                        <VscClose size={20} />
+                    </button>
                 </div>
                 <main className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-shrink-0 flex items-center justify-between bg-tab-bar-dark border-b border-gray-700">
@@ -387,8 +399,8 @@ const EditorPage = () => {
                             />
                         </div>
                     </div>
-                    <div className="flex-grow flex flex-row">
-                        <div className={sidePanel ? "w-1/2 h-full" : "w-full h-full"}>
+                    <div className="flex-grow flex flex-col md:flex-row relative">
+                        <div className={sidePanel ? "w-full md:w-1/2 h-1/2 md:h-full" : "w-full h-full"}>
                             {activeFile ? (
                                 <Editor
                                     height="100%"
@@ -408,7 +420,12 @@ const EditorPage = () => {
                             )}
                         </div>
                         {sidePanel && (
-                            <div className="w-1/2 border-l border-gray-700">
+                            <div className="w-full md:w-1/2 h-1/2 md:h-full border-t md:border-t-0 md:border-l border-gray-700 bg-dark-bg absolute md:static bottom-0 z-10 flex flex-col">
+                                <div className="flex justify-end p-2 md:hidden bg-header-dark border-b border-gray-700">
+                                    <button onClick={() => setSidePanel(null)} className="text-gray-400 hover:text-white">
+                                        <VscClose size={20} />
+                                    </button>
+                                </div>
                                 {sidePanel === 'preview' && (
                                     <PreviewPanel
                                         projectId={projectId}
