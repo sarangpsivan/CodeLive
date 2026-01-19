@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { VscChevronRight, VscChevronDown, VscNewFile, VscNewFolder, VscTrash } from 'react-icons/vsc';
+import { VscChevronRight, VscChevronDown, VscNewFile, VscNewFolder, VscTrash, VscClose } from 'react-icons/vsc';
 import axiosInstance from '../utils/axiosInstance';
 
 const iconMap = {
@@ -51,13 +51,13 @@ const iconMap = {
 const getFileIcon = (fileName) => {
     const iconSize = 16;
     let iconName;
-   
+
     iconName = iconMap[fileName.toLowerCase()];
     if (!iconName) {
         const ext = fileName.split('.').pop().toLowerCase();
         iconName = iconMap[ext];
     }
-   
+
     if (!iconName) {
         iconName = "default_file";
     }
@@ -114,7 +114,7 @@ const FileItemComponent = ({ file, onSelect, onDelete, depth, canEdit }) => (
             {getFileIcon(file.name)}
             <span className="truncate text-white">{file.name}</span>
         </div>
-        
+
         {canEdit && (
             <button
                 onClick={(e) => { e.stopPropagation(); onDelete('file', file.id); }}
@@ -147,7 +147,7 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
                         {folder.name}
                     </span>
                 </div>
-                
+
                 {canEdit && (
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete('folder', folder.id); }}
@@ -180,7 +180,7 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
     );
 };
 
-const FileExplorer = ({ projectId, onFileSelect, refreshKey, canEdit }) => {
+const FileExplorer = ({ projectId, onFileSelect, refreshKey, canEdit, onClose }) => {
     const [fileTree, setFileTree] = useState([]);
     const [expandedFolders, setExpandedFolders] = useState(new Set());
     const [selectedFolderId, setSelectedFolderId] = useState(null);
@@ -241,27 +241,34 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey, canEdit }) => {
     };
     return (
         <aside className="w-full bg-dark-card text-white font-sans flex flex-col h-full">
-            <div className="flex items-center justify-between px-2 pt-2">
+            <div className="flex items-center justify-between px-2 pt-2 pb-2 bg-dark-card">
                 <h3 className="text-xs font-bold uppercase text-gray-400">EXPLORER</h3>
-                
-                {canEdit && (
-                    <div className="flex gap-1">
-                        <button
-                            onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'file' })}
-                            className="p-1 hover:bg-gray-700 rounded text-gray-400"
-                            title="New File"
-                        >
-                            <VscNewFile size={14} />
+
+                <div className="flex gap-1 items-center">
+                    {canEdit && (
+                        <>
+                            <button
+                                onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'file' })}
+                                className="p-1 hover:bg-gray-700 rounded text-gray-400"
+                                title="New File"
+                            >
+                                <VscNewFile size={14} />
+                            </button>
+                            <button
+                                onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'folder' })}
+                                className="p-1 hover:bg-gray-700 rounded text-gray-400"
+                                title="New Folder"
+                            >
+                                <VscNewFolder size={14} />
+                            </button>
+                        </>
+                    )}
+                    {onClose && (
+                        <button onClick={onClose} className="p-1 hover:bg-gray-700 rounded text-gray-400 md:hidden ml-2">
+                            <VscClose size={16} />
                         </button>
-                        <button
-                            onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'folder' })}
-                            className="p-1 hover:bg-gray-700 rounded text-gray-400"
-                            title="New Folder"
-                        >
-                            <VscNewFolder size={14} />
-                        </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
             <div className="flex-1 overflow-y-auto pt-2">
                 {fileTree.map((folder) => (

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
-import { VscBell, VscCheck, VscTrash, VscWarning } from 'react-icons/vsc';
+import { VscBell, VscCheck, VscTrash, VscWarning, VscClose } from 'react-icons/vsc';
 
-const AlertsPanel = ({ projectId, canEdit, refreshKey }) => {
+const AlertsPanel = ({ projectId, canEdit, refreshKey, onClose }) => {
     const [alerts, setAlerts] = useState([]);
     const [newAlertMessage, setNewAlertMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -54,10 +54,15 @@ const AlertsPanel = ({ projectId, canEdit, refreshKey }) => {
 
     return (
         <div className="w-full bg-black border-l border-gray-800 flex flex-col h-full font-sans text-white">
-            
+
             <div className="h-14 px-4 border-b border-gray-800 flex items-center gap-2 bg-[#1F242A] flex-shrink-0">
                 <VscBell className="text-[var(--primary-purple)]" size={20} />
-                <h2 className="font-bold text-sm">Project Alerts</h2>
+                <h2 className="font-bold text-sm flex-grow">Project Alerts</h2>
+                {onClose && (
+                    <button onClick={onClose} className="text-gray-400 hover:text-white md:hidden">
+                        <VscClose size={20} />
+                    </button>
+                )}
             </div>
 
             <div className="flex-grow p-4 overflow-y-auto space-y-3 scrollbar-hide">
@@ -65,8 +70,8 @@ const AlertsPanel = ({ projectId, canEdit, refreshKey }) => {
                     <p className="text-gray-500 text-sm text-center mt-10">No active alerts.</p>
                 ) : (
                     alerts.map(alert => (
-                        <div 
-                            key={alert.id} 
+                        <div
+                            key={alert.id}
                             className={`p-3 rounded-lg border ${alert.is_resolved ? 'border-green-900 bg-green-900/10' : 'border-red-900 bg-red-900/10'}`}
                         >
                             <div className="flex justify-between items-start mb-2">
@@ -80,21 +85,21 @@ const AlertsPanel = ({ projectId, canEdit, refreshKey }) => {
                                     {new Date(alert.created_at).toLocaleTimeString()}
                                 </span>
                             </div>
-                            
+
                             <p className={`text-sm mb-3 ${alert.is_resolved ? 'text-gray-400 line-through' : 'text-white'}`}>
                                 {alert.message}
                             </p>
 
                             {canEdit && (
                                 <div className="flex justify-end gap-2 border-t border-white/10 pt-2">
-                                    <button 
+                                    <button
                                         onClick={() => handleResolveAlert(alert.id, alert.is_resolved)}
                                         className={`p-1.5 rounded hover:bg-white/10 transition ${alert.is_resolved ? 'text-yellow-400' : 'text-green-400'}`}
                                         title={alert.is_resolved ? "Mark Unresolved" : "Mark Resolved"}
                                     >
                                         {alert.is_resolved ? <VscWarning size={14} /> : <VscCheck size={14} />}
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => handleDeleteAlert(alert.id)}
                                         className="p-1.5 rounded hover:bg-white/10 text-red-400 transition"
                                         title="Delete Alert"

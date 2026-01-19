@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { FaPaperPlane, FaRobot, FaSync } from 'react-icons/fa';
+import { VscClose } from 'react-icons/vsc';
 import axiosInstance from '../utils/axiosInstance';
 
-const AIChatPanel = ({ projectId, activeFile }) => {
+const AIChatPanel = ({ projectId, activeFile, onClose }) => {
     const [messages, setMessages] = useState([
         { sender: 'ai', text: 'Hello! I am your AI assistant. I can answer questions about your code. Make sure to "Index" the project first!' }
     ]);
@@ -56,15 +57,22 @@ const AIChatPanel = ({ projectId, activeFile }) => {
                     <FaRobot className="text-[var(--primary-purple)]" size={20} />
                     AI Assistant
                 </div>
-                <button
-                    onClick={handleIndexProject}
-                    disabled={isIndexing}
-                    className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 transition text-gray-200 ${isIndexing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    title="Read all files and update AI memory"
-                >
-                    <FaSync className={isIndexing ? "animate-spin" : ""} />
-                    {isIndexing ? 'Indexing...' : 'Index Code'}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleIndexProject}
+                        disabled={isIndexing}
+                        className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 transition text-gray-200 ${isIndexing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title="Read all files and update AI memory"
+                    >
+                        <FaSync className={isIndexing ? "animate-spin" : ""} />
+                        {isIndexing ? 'Indexing...' : 'Index Code'}
+                    </button>
+                    {onClose && (
+                        <button onClick={onClose} className="text-gray-400 hover:text-white md:hidden">
+                            <VscClose size={20} />
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="flex-grow p-4 overflow-y-auto space-y-4 scrollbar-hide">

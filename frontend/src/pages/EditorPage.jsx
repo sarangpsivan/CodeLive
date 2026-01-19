@@ -203,9 +203,9 @@ const EditorPage = () => {
     const handleFileSelect = (fileId) => {
         // On mobile, close sidebar after selecting a file
         if (window.innerWidth < 768) {
-             setActiveActivityBarTab(null);
+            setActiveActivityBarTab(null);
         }
-        
+
         const existingFile = openFiles.find(f => f.id === fileId);
         if (existingFile) {
             setActiveFileId(fileId);
@@ -342,31 +342,40 @@ const EditorPage = () => {
                     hasUnreadAlerts={hasUnreadAlerts}
                     hasUnreadChat={hasUnreadChat}
                 />
-                <div className={`${activeActivityBarTab ? 'block' : 'hidden'} md:block w-full md:w-80 flex-shrink-0 bg-dark-card border-r border-gray-700 absolute md:static z-20 h-full`}>
+                <div className={`${activeActivityBarTab ? 'block' : 'hidden'} md:block w-full md:w-80 flex-shrink-0 bg-[#1e1e1e] border-r border-gray-700 absolute md:static z-20 h-full`}>
                     {activeActivityBarTab === 'explorer' && (
-                        <FileExplorer projectId={projectId} onFileSelect={handleFileSelect} refreshKey={explorerRefreshKey} canEdit={canEdit} />
+                        <FileExplorer
+                            projectId={projectId}
+                            onFileSelect={handleFileSelect}
+                            refreshKey={explorerRefreshKey}
+                            canEdit={canEdit}
+                            onClose={() => setActiveActivityBarTab(null)}
+                        />
                     )}
                     {activeActivityBarTab === 'chat' && (
-                        <ChatPanel messages={enrichedMessages} onSendMessage={handleSendMessage} currentUser={user} />
+                        <ChatPanel
+                            messages={enrichedMessages}
+                            onSendMessage={handleSendMessage}
+                            currentUser={user}
+                            onClose={() => setActiveActivityBarTab(null)}
+                        />
                     )}
 
                     {activeActivityBarTab === 'ai_chat' && (
-                        <AIChatPanel projectId={projectId} activeFile={activeFile} />
+                        <AIChatPanel
+                            projectId={projectId}
+                            activeFile={activeFile}
+                            onClose={() => setActiveActivityBarTab(null)}
+                        />
                     )}
                     {activeActivityBarTab === 'alerts' && (
                         <AlertsPanel
                             projectId={projectId}
                             canEdit={canEdit}
                             refreshKey={alertRefreshKey}
+                            onClose={() => setActiveActivityBarTab(null)}
                         />
                     )}
-                    {/* Mobile close button for sidebar */}
-                    <button 
-                        onClick={() => setActiveActivityBarTab(null)}
-                        className="md:hidden absolute top-2 right-2 p-2 bg-red-500/20 text-red-400 rounded-full"
-                    >
-                        <VscClose size={20} />
-                    </button>
                 </div>
                 <main className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-shrink-0 flex items-center justify-between bg-tab-bar-dark border-b border-gray-700">
