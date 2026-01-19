@@ -240,9 +240,9 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey, canEdit, onClose })
         }
     };
     return (
-        <aside className="w-full bg-dark-card text-white font-sans flex flex-col h-full">
-            <div className="flex items-center justify-between px-2 pt-2 pb-2 bg-dark-card">
-                <h3 className="text-xs font-bold uppercase text-gray-400">EXPLORER</h3>
+        <aside className="w-full bg-black border-l border-gray-800 text-white font-sans flex flex-col h-full">
+            <div className="flex items-center justify-between px-4 pt-0 h-14 bg-[#1F242A] border-b border-gray-800 flex-shrink-0">
+                <h3 className="text-sm font-bold text-white uppercase">Explorer</h3>
 
                 <div className="flex gap-1 items-center">
                     {canEdit && (
