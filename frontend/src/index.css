@@ -2,21 +2,33 @@
 
 @layer base {
   :root {
+    /* New HSL Variables */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --primary: 270 50% 40%;
     --primary-foreground: 0 0% 98%;
     --accent: 270 50% 40%;
-    /* Adjusted to match purple theme roughly or use user provided */
+    --radius: 0.5rem;
+    --font-display: 'Space Grotesk', sans-serif;
+
+    /* Legacy Variables - Mapped to new colors or kept for compatibility */
+    --primary-purple: #8B5CF6;
+    --accent-lavender: #D6B9FC;
+    --accent-blue: #838CE5;
+    --dark-bg: #000000;
+    --dark-card: #161B22;
+    --header-dark: #1F242A;
+    --activity-bar-dark: #1F242A;
+    --tab-bar-dark: #2D333B;
+    --editor-bg: #1E1E1E;
   }
 
-  /* User provided specific override */
+  /* User provided specific override for Replit look */
   :root {
     --background: 0 0% 0%;
     --foreground: 0 0% 98%;
     --primary: 272 76% 56%;
     --accent: 190 100% 50%;
-    --radius: 0.5rem;
   }
 
   body {
@@ -40,6 +52,15 @@
   transform: translateY(-2px);
 }
 
+.glass-card {
+    background-color: rgba(31, 36, 42, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.font-display {
+    font-family: var(--font-display, 'Inter', sans-serif);
+}
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
