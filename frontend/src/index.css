@@ -2,36 +2,67 @@
 
 @layer base {
   :root {
-    --primary-purple: #8B5CF6;
-    --accent-lavender: #D6B9FC;
-    --accent-blue: #838CE5;
-    --dark-bg: #000000; 
-    --dark-card: #161B22;
-    --header-dark: #1F242A;
-    --activity-bar-dark: #1F242A;
-    --tab-bar-dark: #2D333B;
-    --editor-bg: #1E1E1E;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --primary: 270 50% 40%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 270 50% 40%;
+    /* Adjusted to match purple theme roughly or use user provided */
+  }
+
+  /* User provided specific override */
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
+    --primary: 272 76% 56%;
+    --accent: 190 100% 50%;
+    --radius: 0.5rem;
   }
 
   body {
-    background-color: var(--dark-bg);
-    color: white;
-    font-family: 'Poppins', sans-serif;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
+.bg-grid-pattern {
+  background-size: 50px 50px;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+.hover-elevate {
+  transition: transform 0.2s;
+}
+
+.hover-elevate:hover {
+  transform: translateY(-2px);
+}
+
+
 .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* For Chrome, Safari, and Opera */
+  display: none;
+  /* For Chrome, Safari, and Opera */
 }
 
 .scrollbar-hide {
-    -ms-overflow-style: none;  /* For Internet Explorer and Edge */
-    scrollbar-width: none;  /* For Firefox */
+  -ms-overflow-style: none;
+  /* For Internet Explorer and Edge */
+  scrollbar-width: none;
+  /* For Firefox */
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
