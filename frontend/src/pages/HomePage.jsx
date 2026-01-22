@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Terminal } from 'lucide-react';
+import { motion } from "framer-motion";
 import Features from '../components/home/Features';
 import Stats from '../components/home/Stats';
 import Workflow from '../components/home/Workflow';
@@ -73,7 +74,7 @@ const HomePage = () => {
                                 The AI-driven collaborative IDE that turns your project into a living workspace. Built for teams who ship at the speed of thought.
                             </p>
 
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                                 <Link
                                     to="/register"
                                     className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover-elevate border border-white/10 min-h-10 rounded-md h-12 px-8 text-base bg-white text-black hover:bg-gray-100 font-semibold shadow-[0_0_20px_rgba(255,255,255,0.2)]"
@@ -83,6 +84,33 @@ const HomePage = () => {
                                 <Link to="/login" className="px-8 py-3 rounded-lg border border-gray-800 bg-gray-900/50 hover:bg-gray-800 transition-all font-semibold">
                                     Sign In
                                 </Link>
+                            </div>
+
+                            {/* Hero Image */}
+                            <div className="flex justify-center">
+                                <motion.div
+                                    initial={{ opacity: 0, y: 40 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.8, delay: 0.2 }}
+                                    className="relative rounded-lg border border-white/10 bg-[#0d1117] shadow-2xl overflow-hidden max-w-5xl mx-auto"
+                                >
+                                    {/* Window Title Bar */}
+                                    <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-[#161b22]">
+                                        <div className="flex gap-2">
+                                            <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                                            <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                                            <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                                        </div>
+                                        <div className="ml-4 text-xs text-gray-400 font-mono">codelive-workspace — index.tsx</div>
+                                    </div>
+
+                                    {/* Image Content */}
+                                    <img
+                                        src="/hero-dashboard.png"
+                                        alt="CodeLive Dashboard"
+                                        className="w-full h-auto block"
+                                    />
+                                </motion.div>
                             </div>
                         </div>
                     </div>
