@@ -21,10 +21,14 @@ const RegisterPage = () => {
     const [password, setPassword] = useState('');
     const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
+    // Email state
+    const [email, setEmail] = useState('');
+    const [isEmailFocused, setIsEmailFocused] = useState(false);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         const fullName = e.target.fullName.value;
-        const email = e.target.email.value;
+        const emailInput = e.target.email.value;
         const passwordInput = e.target.password.value;
         const password2Input = e.target.password2.value;
 
@@ -45,7 +49,7 @@ const RegisterPage = () => {
 
         try {
             await axios.post(`${apiBaseUrl}/api/register/`, {
-                email: email,
+                email: emailInput,
                 password: passwordInput,
                 first_name: firstName,
                 last_name: lastName || ""
@@ -68,10 +72,21 @@ const RegisterPage = () => {
 
     const allValid = checks.every(c => c.valid);
 
+    // Email validation checks
+    const emailChecks = [
+        { label: "Valid format (user@domain.com)", valid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) },
+        { label: "No spaces", valid: !/\s/.test(email) && email.length > 0 }
+    ];
+
+    const emailValid = emailChecks.every(c => c.valid);
+
     return (
         <div className="h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] selection:bg-[hsl(var(--primary))]/30 font-sans flex items-center justify-center relative overflow-hidden p-6">
             {/* Background Grid & Pattern */}
             <div className="fixed inset-0 bg-grid-pattern opacity-[0.2] pointer-events-none"></div>
+
+
+
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -88,14 +103,50 @@ const RegisterPage = () => {
                             <p className="text-gray-400 text-sm">Join CodeLive to build faster.</p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-medium text-gray-400 ml-1">Full Name</label>
-                                <input type="text" name="fullName" placeholder="John Doe" className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-[hsl(var(--primary))]/50 focus:ring-1 focus:ring-[hsl(var(--primary))]/50 transition-all text-white placeholder-gray-600 text-sm" required />
+                                <input type="text" name="fullName" placeholder="Enter your full name" className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-[hsl(var(--primary))]/50 focus:ring-1 focus:ring-[hsl(var(--primary))]/50 transition-all text-white placeholder-gray-600 text-sm" required />
                             </div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 relative">
                                 <label className="text-xs font-medium text-gray-400 ml-1">Email</label>
-                                <input type="email" name="email" placeholder="name@example.com" className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-[hsl(var(--primary))]/50 focus:ring-1 focus:ring-[hsl(var(--primary))]/50 transition-all text-white placeholder-gray-600 text-sm" required />
+                                <input
+                                    type="email"
+                                    name="email"
+                                    placeholder="Enter your email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    onFocus={() => setIsEmailFocused(true)}
+                                    onBlur={() => { if (email.length === 0) setIsEmailFocused(false) }}
+                                    className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-[hsl(var(--primary))]/50 focus:ring-1 focus:ring-[hsl(var(--primary))]/50 transition-all text-white placeholder-gray-600 text-sm"
+                                    required
+                                />
+
+                                {/* Floating Email Rules Popup */}
+                                <AnimatePresence>
+                                    {(isEmailFocused || email.length > 0) && !emailValid && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="absolute bottom-full left-0 mb-3 w-full bg-[#1F242A] border border-white/10 rounded-xl p-4 shadow-2xl backdrop-blur-md z-20"
+                                        >
+                                            <div className="absolute bottom-[-6px] left-8 w-3 h-3 bg-[#1F242A] border-b border-r border-white/10 rotate-45"></div>
+                                            <div className="text-xs font-semibold text-gray-300 mb-2">Email Requirements</div>
+                                            <div className="space-y-1.5">
+                                                {emailChecks.map((check, i) => (
+                                                    <div key={i} className={`flex items-center text-[11px] transition-colors ${check.valid ? 'text-green-400' : 'text-gray-500'}`}>
+                                                        <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center mr-2 border ${check.valid ? 'bg-green-500/10 border-green-500/50' : 'border-gray-600 bg-transparent'}`}>
+                                                            {check.valid && <Check className="w-2 h-2" />}
+                                                        </div>
+                                                        {check.label}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                             <div className="space-y-1.5 relative">
                                 <label className="text-xs font-medium text-gray-400 ml-1">Password</label>
