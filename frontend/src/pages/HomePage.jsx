@@ -57,7 +57,7 @@ const HomePage = () => {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--primary))] opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(var(--primary))]"></span>
                                 </span>
-                                v2.0 is now live
+                                v1.0 is now live
                             </div>
 
                             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
@@ -101,7 +101,7 @@ const HomePage = () => {
                                             <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
                                             <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
                                         </div>
-                                        <div className="ml-4 text-xs text-gray-400 font-mono">codelive-workspace — index.tsx</div>
+                                        <div className="ml-4 text-xs text-gray-400 font-mono">codelive-workspace</div>
                                     </div>
 
                                     {/* Image Content */}
