@@ -61,21 +61,26 @@ class ProjectConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if self.user.is_authenticated:
             try:
-                # 1. Remove this channel from the user's connection set
                 user_channels_key = f"project:{self.project_id}:user:{self.user.id}:channels"
-                await self.redis.srem(user_channels_key, self.channel_name)
                 
-                # 2. Check remaining connections
-                count = await self.redis.scard(user_channels_key)
+                # Use pipeline for atomic operations
+                pipe = self.redis.pipeline()
+                pipe.srem(user_channels_key, self.channel_name)
+                pipe.scard(user_channels_key)
+                results = await pipe.execute()
                 
-                if count <= 0:
+                remaining_connections = results[1]
+                
+                if remaining_connections <= 0:
                     # User has no more active connections
-                    await self.redis.delete(user_channels_key) # Clean up
-                    
                     active_users_key = f"project:{self.project_id}:active_users"
-                    await self.redis.srem(active_users_key, self.user.id)
                     
-                    # Broadcast leaving
+                    cleanup_pipe = self.redis.pipeline()
+                    cleanup_pipe.delete(user_channels_key)
+                    cleanup_pipe.srem(active_users_key, self.user.id)
+                    await cleanup_pipe.execute()
+                    
+                    # Broadcast leaving (collaborator update)
                     await self.channel_layer.group_send(
                         self.room_group_name,
                         {
@@ -88,9 +93,9 @@ class ProjectConsumer(AsyncWebsocketConsumer):
                 print(f"Redis Error in disconnect: {e}")
             
             finally:
-                # Close redis connection
                 await self.redis.close()
 
+            # Always broadcast presence update after disconnect logic
             await self.broadcast_presence()
 
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)

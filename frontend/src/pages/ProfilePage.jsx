@@ -104,7 +104,39 @@ const ProfilePage = () => {
             }
         };
         window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+
+        // WebSocket for Real-time Updates
+        let socket = null;
+        let reconnectTimeoutId = null;
+
+        const getWsUrl = () => {
+            const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+            if (apiBase.startsWith('https')) return apiBase.replace('https', 'wss');
+            return apiBase.replace('http', 'ws');
+        };
+        const wsBaseUrl = import.meta.env.VITE_WS_URL || getWsUrl();
+        const currentAuthTokens = JSON.parse(localStorage.getItem('authTokens'));
+
+        if (currentAuthTokens?.access) {
+            socket = new WebSocket(`${wsBaseUrl}/ws/user/?token=${currentAuthTokens.access}`);
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'project_stats_update') {
+                    setProjects(prev => prev.map(p =>
+                        String(p.id) === String(data.projectId) ? { ...p, active_count: data.active_count } : p
+                    ));
+                } else if (data.type === 'project_approved') {
+                    axiosInstance.get('/api/projects/').then(res => setProjects(res.data)).catch(err => console.error(err));
+                }
+            };
+        }
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            if (socket) socket.close();
+            if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
+        };
 
     }, [setUserDirectly]);
 
