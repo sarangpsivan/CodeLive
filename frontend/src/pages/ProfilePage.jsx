@@ -156,7 +156,7 @@ const ProfilePage = () => {
 
                 {/* Hero Header */}
                 {/* Hero Header Card */}
-                <div className="glass-card p-8 rounded-3xl border border-white/5 bg-[#161b22]/60 mb-12 flex items-center gap-6 relative overflow-hidden group">
+                <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/5 bg-[#161b22]/60 mb-12 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden group text-center md:text-left">
                     {/* Ambient Glow */}
                     <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--primary-purple)]/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:bg-[var(--primary-purple)]/10 transition-all duration-700" />
 
@@ -168,7 +168,7 @@ const ProfilePage = () => {
                     </div>
                     <div className="relative z-10">
                         <h1 className="text-3xl font-bold text-white lg:text-4xl font-display tracking-tight mb-2">{user?.first_name || user?.username}</h1>
-                        <div className="text-gray-400 font-mono text-sm flex flex-col items-start lg:flex-row lg:items-center gap-1 lg:gap-2">
+                        <div className="text-gray-400 font-mono text-sm flex flex-col items-center md:items-start lg:flex-row lg:items-center gap-1 lg:gap-2">
                             <div className="flex items-center gap-1">
                                 <span className="text-[var(--primary-purple)]">@</span>{user?.username}
                             </div>
@@ -211,6 +211,9 @@ const ProfilePage = () => {
 
                             <form onSubmit={handleUpdateProfile}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormGroup label="Username">
+                                        <StyledInput value={user?.username || ''} disabled className="opacity-50 cursor-not-allowed" />
+                                    </FormGroup>
                                     <FormGroup label="First Name">
                                         <StyledInput value={firstName} onChange={e => setFirstName(e.target.value)} />
                                     </FormGroup>

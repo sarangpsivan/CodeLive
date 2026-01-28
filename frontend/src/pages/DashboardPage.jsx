@@ -139,7 +139,9 @@ const DashboardPage = () => {
                         <div className="flex gap-4">
                             <StatCard value={projects.length} label="Projects" />
                             <StatCard value={stats.collaborators} label="Collabs" />
-                            <StatCard value={stats.files} label="Files" />
+                            <div className="hidden md:block">
+                                <StatCard value={stats.files} label="Files" />
+                            </div>
                         </div>
                     </div>
 
