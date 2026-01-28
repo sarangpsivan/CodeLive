@@ -19,8 +19,8 @@ class CustomPasswordChangeSerializer(PasswordChangeSerializer):
         return super().validate_old_password(value)
 
 class UserSerializer(serializers.ModelSerializer):
-    first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    last_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
 
     has_usable_password = serializers.SerializerMethodField()
 

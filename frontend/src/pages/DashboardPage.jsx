@@ -75,6 +75,10 @@ const DashboardPage = () => {
                 if (data.type === 'project_approved') {
                     fetchProjects();
                     fetchStats();
+                } else if (data.type === 'project_stats_update') {
+                    setProjects(prev => prev.map(p =>
+                        String(p.id) === String(data.projectId) ? { ...p, active_count: data.active_count } : p
+                    ));
                 }
             };
 

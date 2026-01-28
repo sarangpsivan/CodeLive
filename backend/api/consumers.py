@@ -175,6 +175,38 @@ class ProjectConsumer(AsyncWebsocketConsumer):
                 'active_user_ids': active_ids
             }
         )
+        
+        # Broadcast active count to all project members' dashboards
+        await self.broadcast_to_dashboard(len(active_ids))
+
+    async def broadcast_to_dashboard(self, active_count):
+        member_ids = await self.get_project_member_ids(self.project_id)
+        for user_id in member_ids:
+            await self.channel_layer.group_send(
+                f'user_{user_id}',
+                {
+                    'type': 'project_stats_update',
+                    'project_id': self.project_id,
+                    'active_count': active_count
+                }
+            )
+
+    @database_sync_to_async
+    def get_project_member_ids(self, project_id):
+        try:
+            project = Project.objects.get(id=project_id)
+            # Members include the owner and approved members
+            members = Membership.objects.filter(
+                project_id=project_id, 
+                status=Membership.Status.APPROVED
+            ).values_list('user_id', flat=True)
+            
+            member_set = set(members)
+            member_set.add(project.owner.id)
+            return list(member_set)
+        except Exception as e:
+            print(f"Error fetching members: {e}")
+            return []
     
     async def presence_update(self, event):
         await self.send(text_data=json.dumps({
@@ -290,4 +322,11 @@ class UserNotificationConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'project_approved',
             'project': event['project']
+        }))
+
+    async def project_stats_update(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'project_stats_update',
+            'projectId': event['project_id'],
+            'active_count': event['active_count']
         }))

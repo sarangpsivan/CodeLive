@@ -211,9 +211,6 @@ const ProfilePage = () => {
 
                             <form onSubmit={handleUpdateProfile}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormGroup label="Username">
-                                        <StyledInput value={user?.username || ''} disabled className="opacity-50 cursor-not-allowed" />
-                                    </FormGroup>
                                     <FormGroup label="First Name">
                                         <StyledInput value={firstName} onChange={e => setFirstName(e.target.value)} />
                                     </FormGroup>
