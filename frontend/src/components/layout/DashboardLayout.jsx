@@ -12,7 +12,7 @@ const DashboardLayout = () => {
             <Header />
 
             {/* Main Content Area */}
-            <div className="flex-1 relative z-10 flex flex-col overflow-hidden">
+            <div className="flex-1 relative z-10 flex flex-col">
                 <Outlet />
             </div>
         </div>
