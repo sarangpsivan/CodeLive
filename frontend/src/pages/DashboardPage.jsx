@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { FaPlus, FaUserFriends } from 'react-icons/fa';
+import { FaPlus, FaUserFriends, FaTerminal } from 'react-icons/fa';
 import AuthContext from '../context/AuthContext';
 import axiosInstance from '../utils/axiosInstance';
 import StatCard from '../components/StatCard';
@@ -7,18 +7,20 @@ import ProjectCard from '../components/ProjectCard';
 import ActionCard from '../components/ActionCard';
 import CreateProjectModal from '../components/CreateProjectModal';
 import JoinProjectModal from '../components/JoinProjectModal';
+
 import { jwtDecode } from 'jwt-decode';
+import { motion } from 'framer-motion';
 
 const DashboardPage = () => {
     const { user, authTokens } = useContext(AuthContext);
     const [projects, setProjects] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+
     const [stats, setStats] = useState({ collaborators: 0, files: 0 });
 
     const getWsUrl = () => {
         const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        // Handle https -> wss (Production) and http -> ws (Development)
         if (apiBase.startsWith('https')) {
             return apiBase.replace('https', 'wss');
         }
@@ -57,29 +59,16 @@ const DashboardPage = () => {
 
             const currentAuthTokens = authTokens || (localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null);
 
-            if (!currentAuthTokens?.access) {
-                console.log("WebSocket connection skipped (Dashboard): Not logged in.");
-                return;
-            }
+            if (!currentAuthTokens?.access) return;
 
             try {
                 const decoded = jwtDecode(currentAuthTokens.access);
-                const isExpired = decoded.exp * 1000 < Date.now();
-                if (isExpired) {
-                    console.log("WebSocket connection skipped (Dashboard): Token expired.");
-                    return;
-                }
+                if (decoded.exp * 1000 < Date.now()) return;
             } catch (error) {
-                console.error("WebSocket connection skipped (Dashboard): Invalid token.");
                 return;
             }
 
-            console.log("Attempting WebSocket connection (Dashboard)...");
-            socket = new WebSocket(
-                `${wsBaseUrl}/ws/user/?token=${currentAuthTokens.access}`
-            );
-
-            socket.onopen = () => console.log("WebSocket connection established (Dashboard).");
+            socket = new WebSocket(`${wsBaseUrl}/ws/user/?token=${currentAuthTokens.access}`);
 
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -89,16 +78,9 @@ const DashboardPage = () => {
                 }
             };
 
-            socket.onerror = (err) => console.error("User WebSocket error (Dashboard):", err);
-
             socket.onclose = (event) => {
-                console.log("WebSocket connection closed (Dashboard).", event.code, event.reason);
-                const latestTokens = localStorage.getItem('authTokens');
-                if (event.code !== 1000 && latestTokens) {
-                    console.log("Attempting WebSocket reconnect (Dashboard) in 1 second...");
+                if (event.code !== 1000) {
                     reconnectTimeoutId = setTimeout(connectWebSocket, 1000);
-                } else {
-                    console.log("WebSocket not reconnecting (Dashboard).");
                 }
             };
         };
@@ -107,15 +89,27 @@ const DashboardPage = () => {
 
         return () => {
             if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
-            if (socket) {
-                console.log("Closing WebSocket connection (Dashboard) due to cleanup.");
-                socket.close(1000);
-            }
+            if (socket) socket.close(1000);
         };
     }, [user?.user_id, authTokens?.access]);
 
     const handleProjectCreated = (newProject) => {
         setProjects(prev => [...prev, newProject]);
+    };
+
+    const container = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const item = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
     };
 
     return (
@@ -129,41 +123,78 @@ const DashboardPage = () => {
                 isOpen={isJoinModalOpen}
                 onClose={() => setIsJoinModalOpen(false)}
             />
-            <main className="flex flex-col lg:flex-row gap-8 p-4 lg:p-8 font-sans h-full overflow-y-auto lg:overflow-hidden">
 
-                <aside className="w-full lg:w-80 bg-[var(--dark-card)] rounded-xl p-6 border border-gray-800 flex flex-col flex-shrink-0 h-[400px] lg:h-full overflow-hidden">
-                    <h2 className="text-lg font-semibold mb-6 px-3 text-white flex-shrink-0">Your Projects</h2>
 
-                    <nav className="flex-grow space-y-2 overflow-y-auto scrollbar-hide">
+            <main className="flex-1 p-6 lg:p-10 overflow-y-auto scrollbar-hide">
+                <div className="max-w-7xl mx-auto space-y-12">
+
+                    {/* Welcome Section */}
+                    <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-white/5 pb-8">
+                        <div>
+                            <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-3">
+                                Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--primary-purple)] to-blue-500">{user?.first_name || user?.username}</span>
+                            </h1>
+                            <p className="text-gray-400 text-lg">Your creative workspace is ready. Let's build something new.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <StatCard value={projects.length} label="Projects" />
+                            <StatCard value={stats.collaborators} label="Collabs" />
+                            <StatCard value={stats.files} label="Files" />
+                        </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <ActionCard
+                            icon={<FaPlus />}
+                            title="New Project"
+                            description="Start fresh with a new dev environment. Python & React supported."
+                            buttonText="Create Workspace"
+                            primary
+                            onClick={() => setIsModalOpen(true)}
+                        />
+                        <ActionCard
+                            icon={<FaUserFriends />}
+                            title="Join Team"
+                            description="Have an invite code? Join an existing project to collaborate in real-time."
+                            buttonText="Enter Code"
+                            onClick={() => setIsJoinModalOpen(true)}
+                        />
+
+                    </div>
+
+                    {/* Projects Grid */}
+                    <div>
+                        <div className="flex items-center gap-3 mb-6">
+                            <FaTerminal className="text-[var(--primary-purple)]" />
+                            <h2 className="text-2xl font-bold text-white font-display">Recent Projects</h2>
+                        </div>
+
                         {projects.length > 0 ? (
-                            projects.map(project => <ProjectCard key={project.id} project={project} />)
+                            <motion.div
+                                variants={container}
+                                initial="hidden"
+                                animate="show"
+                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                            >
+                                {projects.map(project => (
+                                    <ProjectCard key={project.id} project={project} />
+                                ))}
+                            </motion.div>
                         ) : (
-                            <p className="px-3 text-sm text-gray-400">No projects yet.</p>
+                            <div className="text-center py-20 rounded-2xl border border-dashed border-gray-700 bg-white/5">
+                                <h3 className="text-xl font-bold text-gray-300 mb-2">No projects found</h3>
+                                <p className="text-gray-500 mb-6">Get started by creating your first workspace.</p>
+                                <button
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="px-6 py-2 bg-[var(--primary-purple)] text-white rounded-lg font-bold hover:brightness-110 transition"
+                                >
+                                    Create Project
+                                </button>
+                            </div>
                         )}
-                    </nav>
-
-                    <button onClick={() => setIsModalOpen(true)} className="w-full mt-6 py-3 flex items-center justify-center bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition-colors flex-shrink-0">
-                        <FaPlus className="mr-2" /> Create New Project
-                    </button>
-                </aside>
-
-                <section className="flex-1 lg:overflow-y-auto scrollbar-hide">
-                    <div className="mb-10">
-                        <h1 className="text-4xl font-bold text-white">Welcome back, <span className="text-[var(--accent-lavender)]">{user?.first_name || user?.username}</span>!</h1>
-                        <p className="text-gray-400 mt-2">Ready to build something amazing? Create a new project or join an existing one.</p>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                        <ActionCard icon={<FaPlus />} title="Create New Project" description="Start a new project from scratch with our modern templates." buttonText="Create Project" primary onClick={() => setIsModalOpen(true)} />
-                        <ActionCard icon={<FaUserFriends />} title="Join Project" description="Collaborate on existing projects with your team." buttonText="Join Project" onClick={() => setIsJoinModalOpen(true)} />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <StatCard value={projects.length} label="Active Projects" />
-                        <StatCard value={stats.collaborators} label="Collaborators" />
-                        <StatCard value={stats.files} label="Total Files" />
-                    </div>
-                </section>
+                </div>
             </main>
         </>
     );

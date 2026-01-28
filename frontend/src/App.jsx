@@ -13,15 +13,10 @@ import JoinPage from './pages/JoinPage';
 import DocumentationEditorPage from './pages/DocumentationEditorPage';
 import ProfilePage from './pages/ProfilePage';
 
+import DashboardLayout from './components/layout/DashboardLayout';
+
 const ProtectedLayout = () => {
-    return (
-        <div className="flex flex-col h-screen bg-dark-bg">
-            <Header />
-            <div className="flex-1 overflow-y-auto">
-                <Outlet />
-            </div>
-        </div>
-    )
+  return <DashboardLayout />;
 }
 
 function App() {
@@ -36,7 +31,7 @@ function App() {
       </Route>
 
       <Route element={<PrivateRoute />}>
-        <Route element={<ProtectedLayout />}>
+        <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/project/:projectId" element={<ProjectDetailPage />} />

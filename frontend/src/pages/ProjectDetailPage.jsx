@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { FaCode, FaSignOutAlt, FaUserClock, FaFileAlt, FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaCode, FaSignOutAlt, FaUserClock, FaFileAlt, FaEdit, FaPlus, FaTrash, FaCheckCircle, FaUsers, FaArrowLeft, FaEnvelopeOpenText } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { timeAgo } from '../utils/dateUtils';
@@ -10,8 +10,7 @@ import JoinRequestsModal from '../components/JoinRequestsModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AuthContext from '../context/AuthContext';
 import { jwtDecode } from 'jwt-decode';
-
-
+import { motion } from 'framer-motion';
 
 const ProjectDetailPage = () => {
     const { projectId } = useParams();
@@ -30,9 +29,9 @@ const ProjectDetailPage = () => {
     const [confirmDeleteModal, setConfirmDeleteModal] = useState({ isOpen: false, docId: null, docTitle: '' });
 
     const isOwner = project && user && project.owner === user.user_id;
+
     const getWsUrl = () => {
         const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        // Handle https -> wss (Production) and http -> ws (Development)
         if (apiBase.startsWith('https')) {
             return apiBase.replace('https', 'wss');
         }
@@ -55,9 +54,7 @@ const ProjectDetailPage = () => {
 
         setDocsLoading(true);
         axiosInstance.get(`/api/projects/${projectId}/documentation/`)
-            .then(res => {
-                setDocuments(res.data);
-            })
+            .then(res => setDocuments(res.data))
             .catch(err => console.error("Failed to fetch documents list", err))
             .finally(() => setDocsLoading(false));
 
@@ -68,51 +65,24 @@ const ProjectDetailPage = () => {
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, [projectId, isOwner]);
+    useEffect(() => { fetchData(); }, [projectId, isOwner]);
 
     useEffect(() => {
         let socket = null;
-
         const connectWebSocket = () => {
-            const currentAuthTokens = authTokens || (localStorage.getItem('authTokens')
-                ? JSON.parse(localStorage.getItem('authTokens'))
-                : null);
-
+            const currentAuthTokens = authTokens || (localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null);
             if (!currentAuthTokens?.access) return;
 
             try {
-                const decoded = jwtDecode(currentAuthTokens.access);
-                if (decoded.exp * 1000 < Date.now()) {
-                    console.log("WebSocket connection skipped (Project): Token expired.");
-                    return;
-                }
-            } catch (e) {
-                console.error("WebSocket connection skipped (Project): Invalid token.");
-                return;
-            }
+                if (jwtDecode(currentAuthTokens.access).exp * 1000 < Date.now()) return;
+            } catch (e) { return; }
 
-            socket = new WebSocket(
-                `${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`
-            );
-
-            socket.onopen = () => {
-                console.log("WebSocket connection established (Project).");
-            };
+            socket = new WebSocket(`${wsBaseUrl}/ws/project/${projectId}/?token=${currentAuthTokens.access}`);
 
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-
-                if (data.type === 'presence_update') {
-                    setActiveMembers(data.active_user_ids);
-                }
-
-                if (data.type === 'new_join_request') {
-                    setRequestCount(prev => prev + 1);
-                }
-
-
+                if (data.type === 'presence_update') setActiveMembers(data.active_user_ids);
+                if (data.type === 'new_join_request') setRequestCount(prev => prev + 1);
                 if (data.type === 'collaborator_update') {
                     fetchData();
                     if (data.removed_user_id && String(data.removed_user_id) === String(user?.user_id)) {
@@ -120,237 +90,240 @@ const ProjectDetailPage = () => {
                         navigate('/dashboard');
                     }
                 }
-
-                if (data.type === 'doc_list_update') {
-                    fetchData();
-                }
-
+                if (data.type === 'doc_list_update') fetchData();
                 if (data.type === 'doc_content_update') {
-                    setDocuments(prevDocs => {
-                        return prevDocs.map(doc => {
-                            if (doc.id === data.documentId) {
-                                return {
-                                    ...doc,
-                                    title: data.title ?? doc.title,
-                                    updated_at: data.updated_at,
-                                    last_updated_by_username: data.updater_username
-                                };
-                            }
-                            return doc;
-                        });
-                    });
+                    setDocuments(prevDocs => prevDocs.map(doc =>
+                        doc.id === data.documentId ? { ...doc, title: data.title ?? doc.title, updated_at: data.updated_at, last_updated_by_username: data.updater_username } : doc
+                    ));
                 }
             };
-
-            socket.onclose = () => {
-                console.log("WebSocket connection closed (Project).");
-            };
         };
-
         connectWebSocket();
-
-        return () => {
-            if (socket) {
-                socket.close();
-            }
-        };
+        return () => { if (socket) socket.close(); };
     }, [projectId, authTokens]);
 
     const handleNewDocument = async () => {
         try {
-            const response = await axiosInstance.post(`/api/projects/${projectId}/documentation/`, {
-                title: "New Document",
-                content: ""
-            });
+            const response = await axiosInstance.post(`/api/projects/${projectId}/documentation/`, { title: "New Document", content: "" });
             navigate(`/project/${projectId}/documentation/${response.data.id}`);
         } catch (error) {
-            console.error("Failed to create new document:", error);
-            alert("Could not create a new document. Please try again.");
+            console.error("Failed to create document:", error);
         }
     };
 
-    const handleDeleteClick = (docId, docTitle) => {
-        setConfirmDeleteModal({ isOpen: true, docId, docTitle });
-    };
+    const handleDeleteClick = (docId, docTitle) => setConfirmDeleteModal({ isOpen: true, docId, docTitle });
 
     const confirmDeleteDocument = async () => {
-        const docIdToDelete = confirmDeleteModal.docId;
-        if (!docIdToDelete) return;
-
+        if (!confirmDeleteModal.docId) return;
         try {
-            await axiosInstance.delete(`/api/projects/${projectId}/documentation/${docIdToDelete}/`);
-            setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== docIdToDelete));
-            setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' });
+            await axiosInstance.delete(`/api/projects/${projectId}/documentation/${confirmDeleteModal.docId}/`);
+            setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== confirmDeleteModal.docId));
         } catch (error) {
             console.error("Failed to delete document:", error);
-            alert("Could not delete the document. Please try again.");
+        } finally {
             setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' });
         }
     };
 
-    if (!project) {
-        return <div className="p-8 text-white">Loading project details...</div>;
-    }
+    if (!project) return <div className="p-8 text-white flex items-center justify-center min-h-[50vh]">Loading project...</div>;
+
+    const tabs = ['collaborators', 'documentation', 'settings'];
 
     return (
         <>
-            <InviteModal
-                isOpen={isInviteModalOpen}
-                onClose={() => setIsInviteModalOpen(false)}
-                project={project}
-            />
+            <InviteModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} project={project} />
+            <JoinRequestsModal isOpen={isRequestsModalOpen} onClose={() => setIsRequestsModalOpen(false)} projectId={projectId} onActionComplete={fetchData} />
+            <ConfirmationModal isOpen={confirmDeleteModal.isOpen} onClose={() => setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' })} onConfirm={confirmDeleteDocument} title="Delete Document" message={`Permanently delete "${confirmDeleteModal.docTitle}"?`} />
 
-            <JoinRequestsModal
-                isOpen={isRequestsModalOpen}
-                onClose={() => setIsRequestsModalOpen(false)}
-                projectId={projectId}
-                onActionComplete={fetchData}
-            />
+            <main className="flex-1 p-6 lg:p-10 text-white font-sans flex flex-col h-full overflow-y-auto scrollbar-hide">
+                <div className="max-w-7xl mx-auto w-full">
 
-            <ConfirmationModal
-                isOpen={confirmDeleteModal.isOpen}
-                onClose={() => setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' })}
-                onConfirm={confirmDeleteDocument}
-                title="Delete Document"
-                message={`Are you sure you want to permanently delete "${confirmDeleteModal.docTitle}"? This action cannot be undone.`}
-            />
+                    {/* Hero Section */}
+                    <div className="relative mb-12 group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-3xl blur-xl opacity-50 group-hover:opacity-100 transition duration-700" />
 
-            <main className="flex-1 p-4 lg:p-8 text-white font-sans flex flex-col h-full overflow-y-auto lg:overflow-visible">
+                        <div className="relative glass-card p-8 lg:p-10 rounded-3xl border border-white/10 bg-[#161b22]/80 backdrop-blur-xl overflow-hidden">
+                            {/* Background Glow */}
+                            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--primary-purple)]/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
 
-                <div className="flex-shrink-0">
-                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6 lg:gap-0 mb-8">
-                        <div>
-                            <Link to="/dashboard" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-4">
-                                <FaSignOutAlt /> Exit
-                            </Link>
-                            <h1 className="text-3xl lg:text-5xl font-bold break-words">{project.name}</h1>
-                            <div className="flex flex-wrap items-center gap-2 lg:gap-4 mt-3 text-xs lg:text-sm text-gray-400">
-                                <span>{project.member_count || 0} collaborators</span>
-                                <span className="text-gray-600">|</span>
-                                <span className="bg-green-500/20 text-green-300 text-xs font-semibold px-2.5 py-1 rounded-full">
-                                    {activeMembers.length} active
-                                </span>
-                                <span className="text-gray-600">|</span>
-                                <span>Last updated {timeAgo(project.updated_at)}</span>
-                            </div>
-                        </div>
+                            <div className="relative z-10 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+                                <div className="space-y-6">
+                                    {/* Removed Back to Dashboard Link */}
 
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:gap-4 flex-shrink-0 w-full lg:w-auto">
-                            {isOwner && (
-                                <button
-                                    onClick={() => setIsRequestsModalOpen(true)}
-                                    className="relative flex items-center justify-center gap-2 px-4 py-3 lg:py-2 bg-dark-card font-bold rounded-lg border border-gray-700 hover:bg-gray-800 transition"
-                                >
-                                    <FaUserClock /> Join Requests
-                                    {requestCount > 0 && (
-                                        <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--primary-purple)] text-xs">
-                                            {requestCount}
-                                        </span>
+                                    <div>
+                                        <h1 className="text-4xl lg:text-6xl font-bold font-display tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-400 mb-4">
+                                            {project.name}
+                                        </h1>
+
+                                        <div className="flex flex-wrap items-center gap-4 text-sm">
+                                            <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
+                                                <FaUsers className="text-gray-400" />
+                                                <span className="text-gray-200 font-medium">{project.member_count} Members</span>
+                                            </div>
+
+                                            <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border backdrop-blur-md transition-all ${activeMembers.length > 0
+                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]'
+                                                : 'bg-white/5 border-white/5 text-gray-400'
+                                                }`}>
+                                                <div className={`w-2 h-2 rounded-full ${activeMembers.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'}`} />
+                                                <span className="font-medium">{activeMembers.length} Active Now</span>
+                                            </div>
+
+                                            <div className="px-4 py-2 text-gray-500 font-mono text-xs">
+                                                Updated {timeAgo(project.updated_at)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 pt-4 lg:pt-0">
+                                    <Link
+                                        to={`/project/${projectId}/editor`}
+                                        className="flex items-center justify-center gap-3 px-8 py-3.5 bg-gradient-to-r from-[var(--primary-purple)] to-indigo-600 text-white font-bold rounded-xl hover:brightness-110 shadow-[0_0_30px_-5px_rgba(124,58,237,0.3)] hover:shadow-[0_0_40px_-5px_rgba(124,58,237,0.5)] transition-all transform hover:-translate-y-0.5"
+                                    >
+                                        <FaCode className="w-5 h-5" />
+                                        <span>Launch Editor</span>
+                                    </Link>
+
+                                    {isOwner && (
+                                        <button
+                                            onClick={() => setIsRequestsModalOpen(true)}
+                                            className={`relative flex items-center gap-3 px-6 py-3.5 font-bold rounded-xl border transition-all shadow-lg group/req ${requestCount > 0
+                                                ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:shadow-red-500/10'
+                                                : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                                                }`}
+                                        >
+                                            <div className="relative">
+                                                <FaUserClock className="w-5 h-5" />
+                                                {requestCount > 0 && (
+                                                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span>Join Requests</span>
+                                            {requestCount > 0 && (
+                                                <span className="ml-1 px-2 py-0.5 rounded-md bg-red-500/20 text-xs text-red-300">{requestCount}</span>
+                                            )}
+                                        </button>
                                     )}
-                                </button>
-                            )}
-
-                            <Link
-                                to={`/project/${projectId}/editor`}
-                                className="flex items-center justify-center px-6 py-3 bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition-colors"
-                            >
-                                <FaCode className="mr-2" />
-                                Open Editor
-                            </Link>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="border-b border-gray-800 flex-shrink-0">
-                    <nav className="flex space-x-2">
-                        <button
-                            onClick={() => setActiveTab('collaborators')}
-                            className={`px-4 py-3 font-semibold text-sm rounded-t-lg ${activeTab === 'collaborators' ? 'border-b-2 border-[var(--primary-purple)] text-white' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Collaborators
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('documentation')}
-                            className={`px-4 py-3 font-semibold text-sm rounded-t-lg ${activeTab === 'documentation' ? 'border-b-2 border-[var(--primary-purple)] text-white' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Documentation
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('settings')}
-                            className={`px-4 py-3 font-semibold text-sm rounded-t-lg ${activeTab === 'settings' ? 'border-b-2 border-[var(--primary-purple)] text-white' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Settings
-                        </button>
-                    </nav>
-                </div>
-
-                <div className="mt-6 flex-grow overflow-y-auto scrollbar-hide">
-                    {activeTab === 'collaborators' && (
-                        <CollaboratorsTab
-                            members={members}
-                            activeMembers={activeMembers}
-                            user={user}
-                            onInviteClick={() => setIsInviteModalOpen(true)}
-                        />
-                    )}
-
-                    {activeTab === 'documentation' && (
-                        <div>
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-2xl font-semibold text-white">Documentation</h2>
+                    {/* Navigation Tabs */}
+                    <div className="flex justify-center mb-10">
+                        <div className="p-1.5 rounded-2xl bg-[#0d1117]/50 border border-white/10 backdrop-blur-md inline-flex">
+                            {tabs.map((tab) => (
                                 <button
-                                    onClick={handleNewDocument}
-                                    className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition"
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`relative px-6 py-2.5 text-sm font-bold tracking-wide capitalize rounded-xl transition-all duration-300 ${activeTab === tab
+                                        ? 'text-white'
+                                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                                        }`}
                                 >
-                                    <FaPlus /> New Document
+                                    {activeTab === tab && (
+                                        <motion.div
+                                            layoutId="activeTab"
+                                            className="absolute inset-0 bg-[#21262d] rounded-xl shadow-lg border border-white/5"
+                                            initial={false}
+                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10 flex items-center gap-2">
+                                        {tab === 'collaborators' && <FaUsers className={activeTab === tab ? 'text-[var(--primary-purple)]' : ''} />}
+                                        {tab === 'documentation' && <FaFileAlt className={activeTab === tab ? 'text-[var(--primary-purple)]' : ''} />}
+                                        {tab === 'settings' && <FaCheckCircle className={activeTab === tab ? 'text-[var(--primary-purple)]' : ''} />}
+                                        {tab}
+                                    </span>
                                 </button>
-                            </div>
-
-                            {docsLoading ? (
-                                <p className="text-gray-400">Loading documents...</p>
-                            ) : documents.length > 0 ? (
-                                <div className="space-y-3">
-                                    {documents.map(doc => (
-                                        <div
-                                            key={doc.id}
-                                            className="group flex items-center justify-between p-4 bg-[var(--dark-card)] rounded-xl border border-gray-800 hover:border-[var(--primary-purple)] transition cursor-pointer"
-                                        >
-                                            <Link
-                                                to={`/project/${projectId}/documentation/${doc.id}`}
-                                                className="flex items-center gap-4 flex-grow min-w-0"
-                                            >
-                                                <FaFileAlt className="text-xl text-[var(--accent-blue)] flex-shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="font-semibold text-white text-lg truncate">{doc.title}</p>
-                                                    <p className="text-sm text-gray-400">
-                                                        Updated {timeAgo(doc.updated_at)} by {doc.last_updated_by_username}
-                                                    </p>
-                                                </div>
-                                            </Link>
-                                            <button
-                                                onClick={() => handleDeleteClick(doc.id, doc.title)}
-                                                className="ml-4 p-2 text-gray-500 hover:text-red-500 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
-                                                title="Delete Document"
-                                            >
-                                                <FaTrash />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-gray-400 text-center py-4">No documentation pages created yet.</p>
-                            )}
+                            ))}
                         </div>
-                    )}
+                    </div>
 
-                    {activeTab === 'settings' && (
-                        <SettingsTab
-                            projectId={projectId}
-                            isOwner={isOwner}
-                            members={members}
-                            onActionComplete={fetchData}
-                        />
-                    )}
+                    {/* Tab Content */}
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        {activeTab === 'collaborators' && (
+                            <CollaboratorsTab members={members} activeMembers={activeMembers} user={user} onInviteClick={() => setIsInviteModalOpen(true)} />
+                        )}
+
+                        {activeTab === 'documentation' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-2xl font-bold font-display text-white">Documentation</h2>
+                                        <p className="text-gray-400 text-sm mt-1">Manage project requirements and technical docs.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleNewDocument}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl border border-white/10 transition-all hover:border-white/20 hover:shadow-lg"
+                                    >
+                                        <FaPlus className="text-[var(--primary-purple)]" />
+                                        <span>New Page</span>
+                                    </button>
+                                </div>
+
+                                {documents.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {documents.map(doc => (
+                                            <div key={doc.id} className="group relative glass-card p-6 rounded-2xl border border-white/5 bg-[#161b22]/40 hover:bg-[#161b22]/60 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-900/10 overflow-hidden">
+                                                <div className="absolute inset-0 border border-transparent group-hover:border-[var(--primary-purple)]/30 rounded-2xl transition-colors pointer-events-none" />
+
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className="p-3.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 text-blue-400 group-hover:text-blue-300 ring-1 ring-white/5 group-hover:ring-white/10 transition-colors">
+                                                        <FaFileAlt size={22} />
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClick(doc.id, doc.title); }}
+                                                        className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors z-20"
+                                                        title="Delete Document"
+                                                    >
+                                                        <FaTrash size={14} />
+                                                    </button>
+                                                </div>
+
+                                                <Link to={`/project/${projectId}/documentation/${doc.id}`} className="block relative z-10">
+                                                    <h3 className="text-xl font-bold text-gray-100 mb-2 line-clamp-1 group-hover:text-[var(--primary-purple)] transition-colors">{doc.title}</h3>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-600 group-hover:bg-[var(--primary-purple)] transition-colors" />
+                                                        <span>Edited {timeAgo(doc.updated_at)}</span>
+                                                        <span className="text-gray-700 mx-1">•</span>
+                                                        <span>{doc.last_updated_by_username}</span>
+                                                    </div>
+                                                </Link>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-24 rounded-3xl border border-dashed border-white/10 bg-white/5">
+                                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                                            <FaFileAlt className="text-gray-600 text-2xl" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-300 mb-2">No documentation yet</h3>
+                                        <p className="text-gray-500 text-sm mb-6 max-w-sm text-center">Start writing documentation to keep your team aligned.</p>
+                                        <button
+                                            onClick={handleNewDocument}
+                                            className="px-6 py-2.5 bg-[#21262d] hover:bg-[#30363d] text-white text-sm font-bold rounded-xl border border-white/10 transition-colors"
+                                        >
+                                            Create First Doc
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'settings' && (
+                            <SettingsTab projectId={projectId} isOwner={isOwner} members={members} onActionComplete={fetchData} />
+                        )}
+                    </motion.div>
                 </div>
             </main>
         </>

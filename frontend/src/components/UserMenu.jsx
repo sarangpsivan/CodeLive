@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaSignOutAlt, FaCog } from 'react-icons/fa';
+import { FaSignOutAlt, FaCog, FaUser } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const UserMenu = ({ user, logoutUser }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -22,55 +23,69 @@ const UserMenu = ({ user, logoutUser }) => {
 
     return (
         <div className="relative" ref={menuRef}>
-            <button 
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-10 h-10 rounded-full bg-[var(--primary-purple)] flex items-center justify-center text-white font-bold border-2 border-white hover:border-gray-200 transition focus:outline-none shadow-sm"
+                className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-600 flex items-center justify-center text-white font-bold border border-white/20 hover:shadow-[0_0_15px_-3px_rgba(124,58,237,0.5)] transition shadow-lg backdrop-blur-sm"
                 title="Account"
             >
                 {initials}
-            </button>
+            </motion.button>
 
-            {isOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-[#1e2329] border border-gray-700 rounded-3xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                    
-                    <div className="p-4 flex flex-col items-center border-b border-gray-700">
-                        <div className="w-16 h-16 rounded-full bg-[var(--primary-purple)] flex items-center justify-center text-2xl font-bold text-white mb-3">
-                            {initials}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        transition={{ duration: 0.15, ease: 'easeOut' }}
+                        className="absolute right-0 mt-3 w-72 bg-[#0d1117]/95 backdrop-blur-2xl rounded-2xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] overflow-hidden z-50 origin-top-right ring-1 ring-white/10 border border-white/10"
+                    >
+
+                        <div className="p-5 flex flex-col items-center border-b border-white/10 bg-gradient-to-b from-white/5 to-transparent">
+                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600/30 to-blue-600/30 flex items-center justify-center text-2xl font-bold text-white mb-3 shadow-inner ring-1 ring-white/20">
+                                {initials}
+                            </div>
+                            <h3 className="text-white font-bold text-lg font-display">{displayName}</h3>
+                            <p className="text-gray-400 text-xs font-mono">{displayEmail}</p>
                         </div>
-                        <h3 className="text-white font-semibold text-lg">{displayName}</h3>
-                        <p className="text-gray-400 text-sm">{displayEmail}</p>
-                    </div>
 
-                    <div className="p-2 space-y-1">
-                        <div className="px-4 py-2">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Account</p>
+                        <div className="p-2 space-y-1">
+                            <Link
+                                to="/profile"
+                                onClick={() => setIsOpen(false)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition text-sm group"
+                            >
+                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                                    <FaCog className="w-4 h-4" />
+                                </div>
+                                <div className="flex flex-col text-left">
+                                    <span className="font-semibold">Settings</span>
+                                    <span className="text-xs text-gray-500 group-hover:text-gray-400">Manage your account</span>
+                                </div>
+                            </Link>
+
+                            <button
+                                onClick={logoutUser}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition text-sm group"
+                            >
+                                <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:bg-red-500/20 transition-colors">
+                                    <FaSignOutAlt className="w-4 h-4" />
+                                </div>
+                                <div className="flex flex-col text-left">
+                                    <span className="font-semibold">Sign Out</span>
+                                    <span className="text-xs text-gray-500 group-hover:text-gray-400">End your session</span>
+                                </div>
+                            </button>
                         </div>
 
-                        <Link 
-                            to="/profile"
-                            onClick={() => setIsOpen(false)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-[#2d333b] rounded-xl transition text-sm text-left"
-                        >
-                            <FaCog className="text-gray-400" />
-                            Manage Account
-                        </Link>
-
-                        <div className="border-t border-gray-700 my-1 mx-2"></div>
-
-                        <button 
-                            onClick={logoutUser}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-[#2d333b] rounded-xl transition text-sm text-left"
-                        >
-                            <FaSignOutAlt className="text-gray-400" />
-                            Sign Out
-                        </button>
-                    </div>
-
-                    <div className="bg-[#252a31] py-2 text-center border-t border-gray-700">
-                        <span className="text-[10px] text-gray-500">CodeLive Account</span>
-                    </div>
-                </div>
-            )}
+                        <div className="bg-black/40 py-2.5 text-center border-t border-white/5">
+                            <span className="text-[10px] text-gray-600 font-mono tracking-wider">CODELIVE v1.0</span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

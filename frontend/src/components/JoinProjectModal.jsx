@@ -1,70 +1,87 @@
-// pop-up modal to join a project via room code
 import React, { useState } from 'react';
+import { FaTimes, FaLink } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const JoinProjectModal = ({ isOpen, onClose }) => {
     const [roomCode, setRoomCode] = useState('');
     const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
-
-    const handleClose = () => {
-        setRoomCode('');
-        setError('');
-        setSuccessMessage('');
-        onClose();
-    };
-
-    if (!isOpen) return null;
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        if (!roomCode.trim()) {
-            setError('Room code cannot be empty.');
-            return;
-        }
         try {
-            const response = await axiosInstance.post('/api/projects/join/', { room_code: roomCode });
-            setSuccessMessage(response.data.message || 'Request sent successfully!');
+            await axiosInstance.post('/api/projects/join/', { room_code: roomCode });
+            onClose();
+            // Optional: trigger refresh in parent or navigate
+            navigate(0); // Reload to show new project
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to send join request.');
+            setError(err.response?.data?.error || 'Failed to join project');
         }
     };
 
+    if (!isOpen) return null;
+
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[var(--dark-card)] p-8 rounded-2xl shadow-lg border border-gray-800 w-full max-w-md text-white">
-                <h2 className="text-2xl font-bold mb-6">Join a Project</h2>
-                
-                {successMessage ? (
-                    <div>
-                        <p className="text-center text-green-400 mb-8">{successMessage}</p>
-                        <div className="flex justify-end">
-                            <button onClick={handleClose} className="px-6 py-2 bg-[var(--primary-purple)] font-bold rounded-lg hover:brightness-110 transition">Close</button>
-                        </div>
+        <AnimatePresence>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                />
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="relative w-full max-w-md bg-[#161b22] border border-gray-700 rounded-2xl shadow-2xl overflow-hidden"
+                >
+                    <div className="flex justify-between items-center p-6 border-b border-gray-800 bg-white/5">
+                        <h2 className="text-xl font-bold text-white font-display flex items-center gap-2">
+                            <FaLink className="text-blue-400" />
+                            Join Project
+                        </h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                            <FaTimes size={20} />
+                        </button>
                     </div>
-                ) : (
-                    <form onSubmit={handleSubmit}>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300">Invite Code</label>
+
+                    <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                        {error && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-300 ml-1">Invite Code</label>
                             <input
                                 type="text"
+                                placeholder="e.g. ab12-cd34"
                                 value={roomCode}
                                 onChange={(e) => setRoomCode(e.target.value)}
-                                placeholder="Enter the project's unique room code"
-                                className="w-full mt-1 px-4 py-3 text-white bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-purple)]"
-                                autoFocus
+                                className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all font-mono text-center tracking-widest uppercase"
+                                required
                             />
                         </div>
-                        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-                        <div className="flex justify-end gap-4 mt-8">
-                            <button type="button" onClick={handleClose} className="px-6 py-2 bg-gray-700 font-bold rounded-lg hover:bg-gray-600 transition">Cancel</button>
-                            <button type="submit" className="px-6 py-2 bg-[var(--primary-purple)] font-bold rounded-lg hover:brightness-110 transition">Send Request</button>
+
+                        <div className="pt-2">
+                            <button
+                                type="submit"
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/30 transition-all transform active:scale-[0.98]"
+                            >
+                                Join Project
+                            </button>
                         </div>
                     </form>
-                )}
+                </motion.div>
             </div>
-        </div>
+        </AnimatePresence>
     );
 };
 

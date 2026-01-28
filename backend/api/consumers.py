@@ -8,7 +8,9 @@ from django.conf import settings
 
 # Initialize Redis client
 # Use REDIS_URL from settings if available, else fallback to localhost
-REDIS_URL = getattr(settings, 'REDIS_URL', 'redis://127.0.0.1:6379/1')
+# Initialize Redis client
+# Use REDIS_URL from settings if available, else fallback to localhost
+REDIS_URL = settings.REDIS_URL or 'redis://127.0.0.1:6379/1'
 
 class ProjectConsumer(AsyncWebsocketConsumer):
     # Redis client placeholder - initialized on class level or instance?
@@ -34,24 +36,20 @@ class ProjectConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        # Presence Logic with Redis
+        # Presence Logic
         try:
             # 1. Add this specific channel to the user's connection set
-            # This is robust: duplicate adds do nothing, removes are specific to this socket
             user_channels_key = f"project:{self.project_id}:user:{self.user.id}:channels"
             await self.redis.sadd(user_channels_key, self.channel_name)
-            await self.redis.expire(user_channels_key, 300) # 5 min auto-cleanup
+            await self.redis.expire(user_channels_key, 300) 
 
             # 2. Add user to the set of active users for this project
             active_users_key = f"project:{self.project_id}:active_users"
             
-            # Check if this is the first connection (cardinality was 0 before add? or just add to active set)
-            # We just add to active set. It's a set, so duplicates are ignored.
             await self.redis.sadd(active_users_key, self.user.id)
             await self.redis.expire(active_users_key, 300)
             
             await self.broadcast_presence()
-            
         except Exception as e:
             print(f"Redis Error in connect: {e}")
 

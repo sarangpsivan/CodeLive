@@ -1,55 +1,91 @@
-// popup window to create a new project
 import React, { useState } from 'react';
+import { FaTimes, FaRocket } from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
-    const [projectName, setProjectName] = useState('');
-    const [error, setError] = useState('');
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        axiosInstance.post('/api/projects/', { name, description })
+            .then(res => {
+                onProjectCreated(res.data);
+                onClose();
+                setName('');
+                setDescription('');
+            })
+            .catch(err => console.error(err));
+    };
 
     if (!isOpen) return null;
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!projectName.trim()) {
-            setError('Project name cannot be empty.');
-            return;
-        }
-        try {
-            const response = await axiosInstance.post('/api/projects/', { name: projectName });
-            onProjectCreated(response.data);
-            onClose();
-            setProjectName('');
-            setError('');
-        } catch (err) {
-            console.error("Failed to create project", err);
-            setError('Failed to create project. Please try again.');
-        }
-    };
-
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[var(--dark-card)] p-8 rounded-2xl shadow-lg border border-gray-800 w-full max-w-md text-white">
-                <h2 className="text-2xl font-bold mb-6">Create New Project</h2>
-                <form onSubmit={handleSubmit}>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300">Project Name</label>
-                        <input
-                            type="text"
-                            value={projectName}
-                            onChange={(e) => setProjectName(e.target.value)}
-                            placeholder="My awesome project"
-                            className="w-full mt-1 px-4 py-3 text-white bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-purple)]"
-                            autoFocus
-                        />
+        <AnimatePresence>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                />
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="relative w-full max-w-md bg-[#161b22] border border-gray-700 rounded-2xl shadow-2xl overflow-hidden"
+                >
+                    {/* Header */}
+                    <div className="flex justify-between items-center p-6 border-b border-gray-800 bg-white/5">
+                        <h2 className="text-xl font-bold text-white font-display flex items-center gap-2">
+                            <FaRocket className="text-[var(--primary-purple)]" />
+                            New Project
+                        </h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                            <FaTimes size={20} />
+                        </button>
                     </div>
-                    {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-                    <div className="flex justify-end gap-4 mt-8">
-                        <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-700 font-bold rounded-lg hover:bg-gray-600 transition">Cancel</button>
-                        <button type="submit" className="px-6 py-2 bg-[var(--primary-purple)] font-bold rounded-lg hover:brightness-110 transition">Create</button>
-                    </div>
-                </form>
+
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-300 ml-1">Project Name</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. NextGen Dashboard"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:border-[var(--primary-purple)] focus:ring-1 focus:ring-[var(--primary-purple)] focus:outline-none transition-all"
+                                required
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-300 ml-1">Description (Optional)</label>
+                            <textarea
+                                placeholder="What are you building?"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:border-[var(--primary-purple)] focus:ring-1 focus:ring-[var(--primary-purple)] focus:outline-none transition-all resize-none h-24"
+                            />
+                        </div>
+
+                        <div className="pt-2">
+                            <button
+                                type="submit"
+                                className="w-full py-3.5 bg-[var(--primary-purple)] hover:bg-[#7c3aed] text-white font-bold rounded-xl shadow-lg shadow-purple-900/30 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
+                            >
+                                <FaRocket /> Create Project
+                            </button>
+                        </div>
+                    </form>
+                </motion.div>
             </div>
-        </div>
+        </AnimatePresence>
     );
 };
 

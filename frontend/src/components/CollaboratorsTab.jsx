@@ -1,51 +1,60 @@
-// component to display and invite collaborators in a project.
 import React from 'react';
 import { FaCrown, FaUserPlus } from 'react-icons/fa';
 
 const CollaboratorsTab = ({ members = [], activeMembers = [], user, onInviteClick }) => {
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-white">Team Members</h2>
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white font-display">Team Members</h2>
                 <button
                     onClick={onInviteClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-purple)] text-white font-bold rounded-lg hover:brightness-110 transition"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-[var(--primary-purple)] text-white font-bold rounded-xl hover:brightness-110 transition shadow-lg shadow-purple-900/20"
                 >
                     <FaUserPlus /> Invite Member
                 </button>
             </div>
-            <div className="bg-[var(--dark-card)] rounded-xl border border-gray-800">
-                {members.map(member => {
-                    const isOwner = member.role === 'ADMIN';
-                    const isCurrentUser = user && user.user_id === member.user;
-                    const isActive = activeMembers.includes(member.user);
 
-                    return (
-                        <div key={member.id} className="flex items-center justify-between p-4 border-b border-gray-800 last:border-b-0">
-                            <div className="flex items-center">
-                                <div className="relative">
-                                    <div className="w-10 h-10 rounded-full bg-[var(--primary-purple)] flex items-center justify-center font-bold mr-4">
-                                        {(member.first_name || member.email).charAt(0).toUpperCase()}
+            <div className="glass-card rounded-2xl border border-white/5 overflow-hidden">
+                <div className="grid grid-cols-1 divide-y divide-white/5">
+                    {members.map(member => {
+                        const isOwner = member.role === 'ADMIN';
+                        const isCurrentUser = user && user.user_id === member.user;
+                        const isActive = activeMembers.includes(member.user);
+
+                        return (
+                            <div key={member.id} className="flex items-center justify-between p-5 hover:bg-white/5 transition-colors group">
+                                <div className="flex items-center gap-4">
+                                    <div className="relative">
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600/20 to-blue-600/20 flex items-center justify-center font-bold text-lg text-white ring-1 ring-white/10 group-hover:ring-white/20 transition-all">
+                                            {(member.first_name || member.email).charAt(0).toUpperCase()}
+                                        </div>
+                                        {isActive && (
+                                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-[#161B22] shadow-sm animate-pulse" />
+                                        )}
                                     </div>
-                                    {isActive && <div className="absolute bottom-0 right-3 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[var(--dark-card)]" />}
+                                    <div>
+                                        <p className="font-bold text-white flex items-center gap-2">
+                                            {isCurrentUser ? 'You' : `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.email}
+                                            {isOwner && <FaCrown className="text-yellow-400 text-sm" title="Project Owner" />}
+                                        </p>
+                                        <p className="text-sm text-gray-400 font-mono">{member.email}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold text-white">
-                                        {isCurrentUser
-                                            ? 'You'
-                                            : ((member.first_name ? member.first_name + ' ' : '') + (member.last_name || '')).trim() || member.email
-                                        }
-                                    </p>
-                                    <p className="text-sm text-gray-400">{member.email}</p>
+
+                                <div className="flex items-center gap-4">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono tracking-wide ${member.role === 'ADMIN'
+                                            ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                            : member.role === 'EDITOR'
+                                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                                : 'bg-gray-700/50 text-gray-400 border border-gray-600/50'
+                                        }`}>
+                                        {member.role}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                                {isOwner && <FaCrown className="text-yellow-500" title="Owner" />}
-                                <span className="text-sm text-gray-400 capitalize">{member.role.toLowerCase()}</span>
-                            </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );

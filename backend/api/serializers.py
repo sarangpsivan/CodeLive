@@ -50,17 +50,30 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+from django.conf import settings
+import redis
+
 class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.id')
     member_count = serializers.SerializerMethodField()
+    active_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'owner', 'created_at', 'updated_at', 'room_code', 'member_count']
+        fields = ['id', 'name', 'owner', 'created_at', 'updated_at', 'room_code', 'member_count', 'active_count']
         read_only_fields = ['room_code']
 
     def get_member_count(self, obj):
         return obj.membership_set.filter(status=Membership.Status.APPROVED).count()
+
+    def get_active_count(self, obj):
+        key = f"project:{obj.id}:active_users"
+        try:
+             # Use sync redis client
+             r = redis.from_url(settings.REDIS_URL or 'redis://127.0.0.1:6379/1')
+             return r.scard(key)
+        except Exception as e:
+             return 0
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod

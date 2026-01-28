@@ -1,11 +1,12 @@
-// StatCard component of the dashboard page
 import React from 'react';
 
-const StatCard = ({ value, label }) => (
-    <div className="bg-[var(--dark-card)] p-6 rounded-2xl text-center border border-gray-800">
-        <h3 className="text-4xl font-bold text-white">{value}</h3>
-        <p className="text-gray-400 mt-1">{label}</p>
-    </div>
-);
+const StatCard = ({ value, label }) => {
+    return (
+        <div className="glass-card w-32 p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center hover:bg-white/5 transition-colors">
+            <h3 className="text-4xl font-bold font-display text-white mb-2">{value}</h3>
+            <p className="text-sm font-medium text-gray-400 tracking-wide uppercase">{label}</p>
+        </div>
+    );
+};
 
 export default StatCard;

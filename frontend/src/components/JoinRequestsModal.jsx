@@ -36,7 +36,7 @@ const JoinRequestsModal = ({ isOpen, onClose, projectId, onActionComplete }) => 
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-[var(--dark-card)] p-8 rounded-2xl shadow-lg border border-gray-800 w-full max-w-lg text-white">
                 <h2 className="text-2xl font-bold mb-6">Join Requests</h2>
-                
+
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                     {loading ? (
                         <p className="text-gray-400">Loading requests...</p>
@@ -48,16 +48,16 @@ const JoinRequestsModal = ({ isOpen, onClose, projectId, onActionComplete }) => 
                                     <p className="text-sm text-gray-400">{req.email}</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button 
+                                    <button
                                         onClick={() => handleAction(req.id, 'reject')}
-                                        className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500/40 transition" 
+                                        className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500/40 transition"
                                         title="Reject"
                                     >
                                         <FaTimes />
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => handleAction(req.id, 'approve')}
-                                        className="p-2 bg-green-500/20 text-green-400 rounded-full hover:bg-green-500/40 transition" 
+                                        className="p-2 bg-green-500/20 text-green-400 rounded-full hover:bg-green-500/40 transition"
                                         title="Approve"
                                     >
                                         <FaCheck />
