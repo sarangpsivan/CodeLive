@@ -220,15 +220,7 @@ const DocumentationEditorPage = () => {
             {/* Header */}
             <header className="flex flex-col xl:flex-row xl:items-start justify-between gap-6 mb-8 shrink-0">
                 <div className="flex-1 space-y-4">
-                    <button
-                        onClick={() => navigate(`/project/${projectId}`)}
-                        className="group flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors w-fit"
-                    >
-                        <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
-                            <FaArrowLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform" />
-                        </div>
-                        <span className="font-medium">Back to Project</span>
-                    </button>
+
 
                     <div className="space-y-1">
                         <input
@@ -256,8 +248,8 @@ const DocumentationEditorPage = () => {
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isSaving}
                         className={`relative group flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-all duration-300 ${(!hasUnsavedChanges || isSaving)
-                                ? 'bg-[#161b22] text-gray-600 border border-white/5 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-[var(--primary-purple)] to-blue-600 text-white shadow-[0_0_20px_-5px_rgba(124,58,237,0.5)] hover:shadow-[0_0_30px_-5px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 border border-transparent'
+                            ? 'bg-[#161b22] text-gray-600 border border-white/5 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-[var(--primary-purple)] to-blue-600 text-white shadow-[0_0_20px_-5px_rgba(124,58,237,0.5)] hover:shadow-[0_0_30px_-5px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 border border-transparent'
                             }`}
                     >
                         <FaSave className={`w-4 h-4 ${hasUnsavedChanges && !isSaving ? 'group-hover:scale-110' : ''} transition-transform`} />

@@ -16,7 +16,7 @@ const TopBar = ({ projectId, projectTitle, activeFileName, activeMembers = [] })
             <div className="flex-shrink-0 bg-dark-card h-12 border-b border-gray-700 flex items-center justify-between px-4 font-sans text-white">
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={() => navigate(`/project/${projectId}`)}
+                        onClick={() => navigate(-1)}
                         className="text-gray-400 hover:text-white transition-colors pl-3 pr-2"
                         title="Back to Project Hub"
                     >

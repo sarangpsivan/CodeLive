@@ -17,7 +17,7 @@ const Header = () => {
     };
 
     return (
-        <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[hsl(var(--background))]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[hsl(var(--background))]/60">
+        <header className="fixed top-0 z-40 w-full border-b border-white/5 bg-[hsl(var(--background))]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[hsl(var(--background))]/60">
             <div className="flex h-16 items-center justify-between px-6 lg:px-8">
 
                 {/* Logo & Breadcrumb */}

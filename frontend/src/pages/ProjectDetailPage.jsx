@@ -176,7 +176,7 @@ const ProjectDetailPage = () => {
     // --- Layout & Render ---
 
     return (
-        <div className="min-h-screen font-sans bg-[#0d1117] selection:bg-purple-500/30 flex flex-col lg:block relative">
+        <div className="min-h-screen font-sans selection:bg-purple-500/30 flex flex-col lg:block relative">
             {/* Background Atmosphere */}
             <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent pointer-events-none" />
 
