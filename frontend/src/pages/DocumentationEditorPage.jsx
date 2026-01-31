@@ -8,54 +8,51 @@ import AuthContext from '../context/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 
 // Custom styles for Quill editor to match the Glass/Dark theme
-// Custom styles for Quill editor to match the Glass/Dark theme
 const quillStyle = `
   .ql-toolbar.ql-snow {
-    background: rgba(22, 27, 34, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(22, 27, 34, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-top-left-radius: 1rem;
     border-top-right-radius: 1rem;
-    backdrop-filter: blur(12px);
     padding: 16px;
-    margin-bottom: 8px;
+    margin-bottom: 2px;
+    z-index: 20;
+    position: relative;
   }
   
   .ql-container.ql-snow {
-    background: rgba(22, 27, 34, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 1rem;
+    background: rgba(13, 17, 23, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
     color: #e5e7eb;
     font-family: 'Inter', sans-serif;
     font-size: 1.05rem;
-    backdrop-filter: blur(12px);
   }
   
   .ql-editor {
     min-height: calc(100vh - 350px);
-    padding: 32px;
-    line-height: 1.7;
+    padding: 40px;
+    line-height: 1.8;
   }
   
   .ql-editor.ql-blank::before {
-    color: #6b7280;
-    font-style: normal;
-    font-size: 1.05rem;
+    color: #4b5563;
+    font-style: italic;
   }
   
   .ql-snow .ql-stroke { stroke: #9ca3af; }
   .ql-snow .ql-fill { fill: #9ca3af; }
   .ql-snow .ql-picker { color: #9ca3af; }
   .ql-snow .ql-picker-options { 
-    background-color: #1f242a; 
+    background-color: #161b22; 
     border: 1px solid rgba(255,255,255,0.1);
     box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
-    border-radius: 0.5rem;
-    padding: 4px;
+    border-radius: 0.75rem;
+    padding: 8px;
+    z-index: 100 !important;
   }
   
-  /* Hover effects */
-  .ql-snow .ql-picker:hover .ql-picker-label { color: #fff; }
-  .ql-snow .ql-picker-label.ql-active { color: #8b5cf6; }
   .ql-snow .ql-picker-item:hover { color: #8b5cf6; }
   .ql-snow button:hover .ql-stroke { stroke: #fff; }
   .ql-snow button.ql-active .ql-stroke { stroke: #8b5cf6; }
@@ -163,20 +160,28 @@ const DocumentationEditorPage = () => {
         } finally { setIsSaving(false); }
     }, [projectId, documentId, title, content]);
 
+    // Helper to check for dirty state, ignoring Quill's empty p tag
+    const isContentDirty = (curr, init) => {
+        const normalize = (html) => (html === '<p><br></p>' ? '' : html);
+        return normalize(curr) !== normalize(init);
+    };
+
     const handleContentChange = (newContent) => {
         setContent(newContent);
-        if ((newContent !== initialContent || title !== initialTitle) && status !== 'Unsaved changes') setStatus('Unsaved changes');
-        else if (newContent === initialContent && title === initialTitle && status === 'Unsaved changes') setStatus('Saved');
+        const dirty = isContentDirty(newContent, initialContent) || title !== initialTitle;
+        if (dirty && status !== 'Unsaved changes') setStatus('Unsaved changes');
+        else if (!dirty && status === 'Unsaved changes') setStatus('Saved');
     };
 
     const handleTitleChange = (event) => {
         const newTitle = event.target.value;
         setTitle(newTitle);
-        if ((content !== initialContent || newTitle !== initialTitle) && status !== 'Unsaved changes') setStatus('Unsaved changes');
-        else if (content === initialContent && newTitle === initialTitle && status === 'Unsaved changes') setStatus('Saved');
+        const dirty = isContentDirty(content, initialContent) || newTitle !== initialTitle;
+        if (dirty && status !== 'Unsaved changes') setStatus('Unsaved changes');
+        else if (!dirty && status === 'Unsaved changes') setStatus('Saved');
     };
 
-    const hasUnsavedChanges = content !== initialContent || title !== initialTitle;
+    const hasUnsavedChanges = isContentDirty(content, initialContent) || title !== initialTitle;
 
     const modules = {
         toolbar: [
@@ -192,7 +197,7 @@ const DocumentationEditorPage = () => {
         let icon = null;
 
         if (status === 'Unsaved changes') {
-            color = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+            color = 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-lg shadow-yellow-900/10';
             icon = <FaExclamationTriangle className="text-xs" />;
         } else if (status === 'Saved' || status === 'Loaded' || status.startsWith('Synced')) {
             color = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -206,9 +211,9 @@ const DocumentationEditorPage = () => {
         }
 
         return (
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${color} transition-all duration-300`}>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${color} transition-all duration-300`}>
                 {icon}
-                <span className="text-xs font-bold uppercase tracking-wider">{status.startsWith('Synced') ? 'Synced' : status}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest">{status.startsWith('Synced') ? 'Synced' : status}</span>
             </div>
         );
     };
@@ -221,14 +226,13 @@ const DocumentationEditorPage = () => {
             <header className="flex flex-col xl:flex-row xl:items-start justify-between gap-6 mb-8 shrink-0">
                 <div className="flex-1 space-y-4">
 
-
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                         <input
                             type="text"
                             value={title}
                             onChange={handleTitleChange}
                             placeholder="Untitled Document"
-                            className="w-full bg-transparent text-4xl lg:text-5xl font-bold font-display text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-400 focus:outline-none focus:to-white placeholder-gray-700 transition-all"
+                            className="w-full bg-transparent text-4xl lg:text-5xl font-bold font-display text-white placeholder-gray-700 transition-all hover:bg-white/5 focus:bg-white/5 rounded-xl px-4 -ml-4 py-2 border border-transparent focus:border-white/10 outline-none"
                             disabled={status === 'Loading...'}
                         />
                         <div className="flex items-center gap-3 text-sm text-gray-500 font-mono pl-1">
@@ -241,26 +245,26 @@ const DocumentationEditorPage = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 pt-2">
+                <div className="flex items-center gap-4 pt-4">
                     <StatusBadge status={status} />
 
                     <button
                         onClick={handleSave}
                         disabled={!hasUnsavedChanges || isSaving}
-                        className={`relative group flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-all duration-300 ${(!hasUnsavedChanges || isSaving)
-                            ? 'bg-[#161b22] text-gray-600 border border-white/5 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-[var(--primary-purple)] to-blue-600 text-white shadow-[0_0_20px_-5px_rgba(124,58,237,0.5)] hover:shadow-[0_0_30px_-5px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 border border-transparent'
+                        className={`relative group flex items-center gap-2 px-6 py-2.5 font-bold rounded-xl transition-all duration-300 ${(!hasUnsavedChanges || isSaving)
+                            ? 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
+                            : 'bg-white text-black shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.4)] hover:-translate-y-0.5 border border-transparent'
                             }`}
                     >
                         <FaSave className={`w-4 h-4 ${hasUnsavedChanges && !isSaving ? 'group-hover:scale-110' : ''} transition-transform`} />
-                        <span>{isSaving ? 'Saving Changes...' : 'Save Changes'}</span>
+                        <span>{isSaving ? 'Saving...' : 'Save'}</span>
                     </button>
                 </div>
             </header>
 
             {/* Editor Area */}
-            <div className="flex-1 min-h-0 flex flex-col relative max-w-7xl mx-auto w-full">
-                <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent rounded-2xl pointer-events-none" />
+            <div className="flex-1 min-h-0 flex flex-col relative max-w-5xl mx-auto w-full">
+                <div className="absolute -inset-4 bg-gradient-to-b from-purple-500/5 via-blue-500/5 to-transparent rounded-3xl pointer-events-none blur-xl" />
                 <ReactQuill
                     theme="snow"
                     value={content}
@@ -268,7 +272,7 @@ const DocumentationEditorPage = () => {
                     modules={modules}
                     placeholder="Start documenting your ideas..."
                     readOnly={status === 'Loading...'}
-                    className="h-full flex flex-col overflow-hidden"
+                    className="h-full flex flex-col overflow-hidden relative z-10"
                 />
             </div>
         </div>

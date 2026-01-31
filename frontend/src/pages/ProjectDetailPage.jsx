@@ -9,8 +9,8 @@ import axiosInstance from '../utils/axiosInstance';
 import { timeAgo } from '../utils/dateUtils';
 import CollaboratorsTab from '../components/CollaboratorsTab';
 import SettingsTab from '../components/SettingsTab';
+import JoinRequestsTab from '../components/JoinRequestsTab';
 import InviteModal from '../components/InviteModal';
-import JoinRequestsModal from '../components/JoinRequestsModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AuthContext from '../context/AuthContext';
 import { jwtDecode } from 'jwt-decode';
@@ -69,7 +69,6 @@ const ProjectDetailPage = () => {
     const [requestCount, setRequestCount] = useState(0);
     const [activeSection, setActiveSection] = useState('overview'); // sidebar selection
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-    const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
     const [activeMembers, setActiveMembers] = useState([]);
     const { user, authTokens } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -181,7 +180,6 @@ const ProjectDetailPage = () => {
             <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent pointer-events-none" />
 
             <InviteModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} project={project} />
-            <JoinRequestsModal isOpen={isRequestsModalOpen} onClose={() => setIsRequestsModalOpen(false)} projectId={projectId} onActionComplete={fetchData} />
             <ConfirmationModal isOpen={confirmDeleteModal.isOpen} onClose={() => setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' })} onConfirm={confirmDeleteDocument} title="Delete Document" message={`Permanently delete "${confirmDeleteModal.docTitle}"?`} />
 
             {/* Sidebar */}
@@ -217,28 +215,15 @@ const ProjectDetailPage = () => {
                             <SidebarLink
                                 label="Join Requests"
                                 id="requests"
-                                active={false}
+                                active={activeSection === 'requests'}
                                 icon={FaUserClock}
-                                onClick={() => setIsRequestsModalOpen(true)}
+                                onClick={() => setActiveSection('requests')}
                                 badge={requestCount}
                             />
                         )}
                         <SidebarLink label="Documentation" id="docs" active={activeSection === 'docs'} icon={FaFileAlt} onClick={() => setActiveSection('docs')} />
                         <SidebarLink label="Settings" id="settings" active={activeSection === 'settings'} icon={FaCog} onClick={() => setActiveSection('settings')} />
                     </nav>
-
-                    {isOwner && requestCount > 0 && (
-                        <div className="mt-8">
-                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-2">Action Required</div>
-                            <button
-                                onClick={() => setIsRequestsModalOpen(true)}
-                                className="w-full flex items-center justify-between px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm font-bold hover:bg-red-500/20 transition-all"
-                            >
-                                <span className="flex items-center gap-2"><FaUserClock /> Join Requests</span>
-                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{requestCount}</span>
-                            </button>
-                        </div>
-                    )}
                 </div>
 
 
@@ -370,6 +355,10 @@ const ProjectDetailPage = () => {
                                         </div>
                                     )}
                                 </div>
+                            )}
+
+                            {activeSection === 'requests' && isOwner && (
+                                <JoinRequestsTab projectId={projectId} onActionComplete={fetchData} />
                             )}
 
                             {activeSection === 'settings' && (
