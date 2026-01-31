@@ -175,7 +175,7 @@ const ProjectDetailPage = () => {
     // --- Layout & Render ---
 
     return (
-        <div className="min-h-screen font-sans selection:bg-purple-500/30 flex flex-col lg:block relative">
+        <div className="min-h-full font-sans selection:bg-purple-500/30 flex flex-col lg:block relative">
             {/* Background Atmosphere */}
             <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent pointer-events-none" />
 
@@ -239,9 +239,9 @@ const ProjectDetailPage = () => {
                     <AnimatePresence mode='wait'>
                         <motion.div
                             key={activeSection}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
                             transition={{ duration: 0.2 }}
                         >
                             {activeSection === 'overview' && (

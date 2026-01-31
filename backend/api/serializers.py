@@ -143,7 +143,7 @@ class FolderCreateSerializer(serializers.ModelSerializer):
         fields = ['name', 'parent', 'project']
 
 class DocumentationSerializer(serializers.ModelSerializer):
-    last_updated_by_username = serializers.CharField(source='last_updated_by.username', read_only=True, default='N/A')
+    last_updated_by_username = serializers.SerializerMethodField()
     
     class Meta:
         model = Documentation
@@ -162,12 +162,22 @@ class DocumentationSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+    def get_last_updated_by_username(self, obj):
+        if not obj.last_updated_by:
+            return "Unknown"
+        return obj.last_updated_by.first_name if obj.last_updated_by.first_name else obj.last_updated_by.username
+    
 class DocumentationListSerializer(serializers.ModelSerializer):
-    last_updated_by_username = serializers.CharField(source='last_updated_by.username', read_only=True, default='N/A')
+    last_updated_by_username = serializers.SerializerMethodField()
 
     class Meta:
         model = Documentation
         fields = ['id', 'title', 'updated_at', 'last_updated_by_username'] 
+
+    def get_last_updated_by_username(self, obj):
+        if not obj.last_updated_by:
+            return "Unknown"
+        return obj.last_updated_by.first_name if obj.last_updated_by.first_name else obj.last_updated_by.username
 
 class AlertSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()

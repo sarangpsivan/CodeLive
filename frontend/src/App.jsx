@@ -19,27 +19,32 @@ const ProtectedLayout = () => {
   return <DashboardLayout />;
 }
 
+import ScrollToTop from './components/ScrollToTop';
+
 function App() {
   return (
-    <Routes>
-      <Route element={<PublicRoute />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/join" element={<JoinPage />} />
-        <Route path="/social-auth-callback" element={<SocialAuthCallback />} />
-      </Route>
-
-      <Route element={<PrivateRoute />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/project/:projectId" element={<ProjectDetailPage />} />
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route element={<PublicRoute />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/join" element={<JoinPage />} />
+          <Route path="/social-auth-callback" element={<SocialAuthCallback />} />
         </Route>
-        <Route path="/project/:projectId/editor" element={<EditorPage />} />
-        <Route path="/project/:projectId/documentation/:documentId" element={<DocumentationEditorPage />} />
-      </Route>
-    </Routes>
+
+        <Route element={<PrivateRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/project/:projectId" element={<ProjectDetailPage />} />
+          </Route>
+          <Route path="/project/:projectId/editor" element={<EditorPage />} />
+          <Route path="/project/:projectId/documentation/:documentId" element={<DocumentationEditorPage />} />
+        </Route>
+      </Routes>
+    </>
   );
 }
 
