@@ -312,9 +312,9 @@ const ProjectDetailPage = () => {
 
                             {activeSection === 'docs' && (
                                 <div>
-                                    <div className="flex justify-between items-center mb-8">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                                         <SectionHeader title="Documentation" description="Technical specs, requirements, and notes." />
-                                        <button onClick={handleNewDocument} className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl border border-white/10 transition-all hover:border-white/20 hover:shadow-lg">
+                                        <button onClick={handleNewDocument} className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl border border-white/10 transition-all hover:border-white/20 hover:shadow-lg">
                                             <FaPlus className="text-[var(--primary-purple)]" /> <span>New Page</span>
                                         </button>
                                     </div>

@@ -232,7 +232,7 @@ const DocumentationEditorPage = () => {
                             value={title}
                             onChange={handleTitleChange}
                             placeholder="Untitled Document"
-                            className="w-full bg-transparent text-4xl lg:text-5xl font-bold font-display text-white placeholder-gray-700 transition-all hover:bg-white/5 focus:bg-white/5 rounded-xl px-4 -ml-4 py-2 border border-transparent focus:border-white/10 outline-none"
+                            className="w-full bg-transparent text-2xl md:text-4xl lg:text-5xl font-bold font-display text-white placeholder-gray-700 transition-all hover:bg-white/5 focus:bg-white/5 rounded-xl px-4 -ml-4 py-2 border border-transparent focus:border-white/10 outline-none"
                             disabled={status === 'Loading...'}
                         />
                         <div className="flex items-center gap-3 text-sm text-gray-500 font-mono pl-1">
