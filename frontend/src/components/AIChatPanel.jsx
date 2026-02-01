@@ -54,14 +54,14 @@ const AIChatPanel = ({ projectId, activeFile, onClose }) => {
 
             <div className="h-10 px-4 border-b border-[#27272a] flex justify-between items-center bg-[#09090b] flex-shrink-0">
                 <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-wider">
-                    <FaRobot size={16} />
+                    <FaRobot size={16} className="text-purple-500" />
                     <span>AI Assistant</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleIndexProject}
                         disabled={isIndexing}
-                        className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded bg-[#27272a] hover:bg-[#3f3f46] border border-[#3f3f46] transition text-gray-300 ${isIndexing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 transition text-purple-200 ${isIndexing ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="Read all files and update AI memory"
                     >
                         <FaSync className={isIndexing ? "animate-spin" : ""} />
@@ -79,9 +79,9 @@ const AIChatPanel = ({ projectId, activeFile, onClose }) => {
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div
-                            className={`max-w-[90%] p-3 rounded-lg text-sm whitespace-pre-wrap leading-relaxed ${msg.sender === 'user'
-                                ? 'bg-[#27272a] text-white border border-[#3f3f46]'
-                                : 'bg-transparent text-gray-300 border border-[#27272a]'
+                            className={`max-w-[90%] px-4 py-2 text-sm whitespace-pre-wrap leading-relaxed shadow-sm ${msg.sender === 'user'
+                                ? 'bg-[#27272a] text-white border border-[#3f3f46] rounded-lg rounded-tr-none'
+                                : 'bg-purple-600 text-white rounded-lg rounded-tl-none'
                                 }`}
                         >
                             {msg.text}
@@ -105,12 +105,12 @@ const AIChatPanel = ({ projectId, activeFile, onClose }) => {
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask about your code..."
                         disabled={isLoading}
-                        className="flex-grow bg-[#1c1c1c] text-white rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[var(--primary-purple)] text-sm border border-[#27272a] placeholder-gray-600 shadow-inner"
+                        className="flex-grow bg-[#1c1c1c] text-white rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500/50 text-sm border border-[#27272a] placeholder-gray-600 shadow-inner"
                     />
                     <button
                         type="submit"
                         disabled={isLoading || !input.trim()}
-                        className="bg-[#27272a] text-white p-2 rounded-md hover:bg-[#3f3f46] transition disabled:opacity-50 disabled:cursor-not-allowed border border-[#3f3f46] shadow-sm"
+                        className="bg-purple-600 text-white p-2 rounded-md hover:bg-purple-500 transition disabled:opacity-50 disabled:cursor-not-allowed border border-purple-500 shadow-sm"
                     >
                         <FaPaperPlane size={12} />
                     </button>

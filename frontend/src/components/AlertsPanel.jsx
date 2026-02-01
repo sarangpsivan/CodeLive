@@ -56,7 +56,7 @@ const AlertsPanel = ({ projectId, canEdit, refreshKey, onClose }) => {
         <div className="w-full bg-[#09090b] border-l border-[#27272a] flex flex-col h-full font-sans text-white">
 
             <div className="h-10 px-4 border-b border-[#27272a] flex items-center gap-2 bg-[#09090b] flex-shrink-0">
-                <VscBell className="text-white" size={16} />
+                <VscBell className="text-red-500" size={16} />
                 <h2 className="font-bold text-xs uppercase tracking-wider text-white flex-grow">Project Alerts</h2>
                 {onClose && (
                     <button onClick={onClose} className="text-gray-500 hover:text-white md:hidden">
@@ -132,7 +132,7 @@ const AlertsPanel = ({ projectId, canEdit, refreshKey, onClose }) => {
                     <button
                         type="submit"
                         disabled={isLoading || !newAlertMessage.trim()}
-                        className="w-full bg-[#27272a] hover:bg-[#3f3f46] text-white font-semibold py-2 rounded-md transition text-xs border border-[#3f3f46] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2 rounded-md transition text-xs border border-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                     >
                         {isLoading ? 'Sending...' : 'Raise Alert'}
                     </button>
