@@ -15,6 +15,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import AuthContext from '../context/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { motion, AnimatePresence } from 'framer-motion';
+import LoadingScreen from '../components/LoadingScreen';
 
 // --- Reusable Components (Local for now to avoid large refactors) ---
 
@@ -170,7 +171,7 @@ const ProjectDetailPage = () => {
         finally { setConfirmDeleteModal({ isOpen: false, docId: null, docTitle: '' }); }
     };
 
-    if (!project) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading project...</div>;
+    if (!project) return <LoadingScreen text="Loading Project..." />;
 
     // --- Layout & Render ---
 

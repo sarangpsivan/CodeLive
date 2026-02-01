@@ -89,3 +89,19 @@
 .animate-fade-in {
   animation: fade-in 0.5s ease-out forwards;
 }
+
+@keyframes draw-square {
+    0% {
+        stroke-dashoffset: 180;
+    }
+    50% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: -180;
+    }
+}
+
+.animate-draw-square {
+    animation: draw-square 2s ease-in-out infinite;
+}

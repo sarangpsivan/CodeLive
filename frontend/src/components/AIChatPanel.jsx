@@ -50,26 +50,26 @@ const AIChatPanel = ({ projectId, activeFile, onClose }) => {
     };
 
     return (
-        <div className="w-full bg-black border-l border-gray-800 flex flex-col h-full font-sans text-white">
+        <div className="w-full bg-[#09090b] border-l border-[#27272a] flex flex-col h-full font-sans text-white">
 
-            <div className="h-14 px-4 border-b border-gray-800 flex justify-between items-center bg-[#1F242A] flex-shrink-0">
-                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                    <FaRobot className="text-[var(--primary-purple)]" size={20} />
-                    AI Assistant
+            <div className="h-10 px-4 border-b border-[#27272a] flex justify-between items-center bg-[#09090b] flex-shrink-0">
+                <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-wider">
+                    <FaRobot size={16} />
+                    <span>AI Assistant</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleIndexProject}
                         disabled={isIndexing}
-                        className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 transition text-gray-200 ${isIndexing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded bg-[#27272a] hover:bg-[#3f3f46] border border-[#3f3f46] transition text-gray-300 ${isIndexing ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="Read all files and update AI memory"
                     >
                         <FaSync className={isIndexing ? "animate-spin" : ""} />
                         {isIndexing ? 'Indexing...' : 'Index Code'}
                     </button>
                     {onClose && (
-                        <button onClick={onClose} className="text-gray-400 hover:text-white md:hidden">
-                            <VscClose size={20} />
+                        <button onClick={onClose} className="text-gray-500 hover:text-white md:hidden">
+                            <VscClose size={16} />
                         </button>
                     )}
                 </div>
@@ -79,9 +79,9 @@ const AIChatPanel = ({ projectId, activeFile, onClose }) => {
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div
-                            className={`max-w-[85%] p-3 rounded-lg text-sm whitespace-pre-wrap leading-relaxed ${msg.sender === 'user'
-                                ? 'bg-[var(--primary-purple)] text-white rounded-br-none'
-                                : 'bg-gray-700 text-gray-200 rounded-bl-none'
+                            className={`max-w-[90%] p-3 rounded-lg text-sm whitespace-pre-wrap leading-relaxed ${msg.sender === 'user'
+                                ? 'bg-[#27272a] text-white border border-[#3f3f46]'
+                                : 'bg-transparent text-gray-300 border border-[#27272a]'
                                 }`}
                         >
                             {msg.text}
@@ -90,14 +90,14 @@ const AIChatPanel = ({ projectId, activeFile, onClose }) => {
                 ))}
                 {isLoading && (
                     <div className="flex justify-start">
-                        <div className="bg-gray-700 text-gray-400 p-3 rounded-lg text-sm italic animate-pulse">
+                        <div className="bg-transparent text-gray-500 p-2 rounded text-xs italic border border-[#27272a]">
                             Thinking...
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="p-3 border-t border-gray-800 bg-[#1F242A] flex-shrink-0">
+            <div className="p-3 border-t border-[#27272a] bg-[#09090b] flex-shrink-0">
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                     <input
                         type="text"
@@ -105,14 +105,14 @@ const AIChatPanel = ({ projectId, activeFile, onClose }) => {
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask about your code..."
                         disabled={isLoading}
-                        className="flex-grow bg-gray-900 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[var(--primary-purple)] text-sm border border-gray-700"
+                        className="flex-grow bg-[#1c1c1c] text-white rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[var(--primary-purple)] text-sm border border-[#27272a] placeholder-gray-600 shadow-inner"
                     />
                     <button
                         type="submit"
                         disabled={isLoading || !input.trim()}
-                        className="bg-[var(--primary-purple)] text-white p-3 rounded-lg hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-[#27272a] text-white p-2 rounded-md hover:bg-[#3f3f46] transition disabled:opacity-50 disabled:cursor-not-allowed border border-[#3f3f46] shadow-sm"
                     >
-                        <FaPaperPlane />
+                        <FaPaperPlane size={12} />
                     </button>
                 </form>
             </div>

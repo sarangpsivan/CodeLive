@@ -1,61 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router-dom';
+import LoadingScreen from '../components/LoadingScreen';
+
 import TopBar from '../components/TopBar';
 import ActivityBar from '../components/ActivityBar';
 import FileExplorer from '../components/FileExplorer';
 import ChatPanel from '../components/ChatPanel';
 import AlertsPanel from '../components/AlertsPanel';
 import axiosInstance from '../utils/axiosInstance';
-import { VscClose, VscKebabVertical } from 'react-icons/vsc';
+import { getFileIcon } from '../utils/fileIcons';
+import { VscClose, VscKebabVertical, VscFiles, VscRemote } from 'react-icons/vsc';
+
 import AuthContext from '../context/AuthContext';
 import AIChatPanel from '../components/AIChatPanel';
 import PreviewPanel from '../components/PreviewPanel';
 import TerminalPanel from '../components/TerminalPanel';
+import { Terminal } from 'lucide-react';
 
-const EditorActions = ({ onShowOutput, onShowPreview, isPreviewEnabled }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef(null);
 
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    return (
-        <div className="relative" ref={menuRef}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded"
-            >
-                <VscKebabVertical />
-            </button>
-            {isOpen && (
-                <div className="absolute top-full right-0 mt-1 w-48 bg-dark-card border border-gray-700 rounded-md shadow-lg z-10">
-                    <button
-                        onClick={() => { onShowOutput(); setIsOpen(false); }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
-                    >
-                        Show Output
-                    </button>
-                    {isPreviewEnabled && (
-                        <button
-                            onClick={() => { onShowPreview(); setIsOpen(false); }}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
-                        >
-                            Show Preview
-                        </button>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-};
 
 const EditorPage = () => {
     const { projectId } = useParams();
@@ -324,15 +287,35 @@ const EditorPage = () => {
     const isRunButtonEnabled = activeFile && executableLanguages.includes(activeFile.language);
     const isPreviewEnabled = activeFile && activeFile.language === 'html';
 
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (isLoading || !project) {
+        return <LoadingScreen />;
+    }
+
     return (
-        <div className="flex flex-col h-screen bg-dark-bg text-white font-sans">
+        <div className="flex flex-col h-screen bg-[#0a0a0a] text-white font-sans overflow-hidden relative selection:bg-purple-500/30">
+            {/* Background Atmosphere - More Minimal */}
+            <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-zinc-900/40 via-[#0a0a0a] to-transparent pointer-events-none" />
+
             <TopBar
                 projectId={projectId}
                 projectTitle={project?.name || 'Loading...'}
+                roomCode={project?.room_code}
                 activeFileName={activeFile?.name || ''}
-                activeMembers={activeMembers}
+                activeMembers={activeMembers || []}
+                onShowOutput={() => setSidePanel('output')}
+                onShowPreview={() => setSidePanel('preview')}
+                isPreviewEnabled={isPreviewEnabled}
             />
-            <div className="flex flex-grow overflow-hidden relative">
+            <div className="flex flex-grow overflow-hidden relative z-10">
                 <ActivityBar
                     activeTab={activeActivityBarTab}
                     onTabChange={handleTabChange}
@@ -342,7 +325,7 @@ const EditorPage = () => {
                     hasUnreadAlerts={hasUnreadAlerts}
                     hasUnreadChat={hasUnreadChat}
                 />
-                <div className={`${activeActivityBarTab ? 'block' : 'hidden'} md:block w-full md:w-80 flex-shrink-0 bg-[#1e1e1e] border-r border-gray-700 absolute md:static z-20 h-full`}>
+                <div className={`${activeActivityBarTab ? 'block' : 'hidden'} md:block w-full md:w-80 flex-shrink-0 bg-[#0a0a0a]/80 backdrop-blur-xl border-r border-[#27272a] absolute md:static z-20 h-full shadow-2xl`}>
                     {activeActivityBarTab === 'explorer' && (
                         <FileExplorer
                             projectId={projectId}
@@ -377,39 +360,35 @@ const EditorPage = () => {
                         />
                     )}
                 </div>
-                <main className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex-shrink-0 flex items-center justify-between bg-tab-bar-dark border-b border-gray-700">
-                        <div className="flex">
-                            {openFiles.map(file => (
-                                <div
-                                    key={file.id}
-                                    className={`flex items-center px-4 py-2 text-sm border-r border-gray-700 cursor-pointer
-                                        ${activeFileId === file.id
-                                            ? 'bg-[var(--editor-bg)] text-white'
-                                            : 'bg-tab-bar-dark border-b border-gray-700'
-                                        }`}
-                                    onClick={() => handleFileSelect(file.id)}
-                                >
-                                    <span className="mr-2">{file.name}</span>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleCloseFile(file.id); }}
-                                        className="text-gray-500 hover:text-white"
+                <main className="flex-1 flex flex-col overflow-hidden bg-[#0a0a0a]">
+                    {openFiles.length > 0 && (
+                        <div className="flex-shrink-0 flex items-center justify-between bg-[#0a0a0a] border-b border-[#27272a] h-10 px-0">
+                            <div className="flex h-full overflow-x-auto scrollbar-hide">
+                                {openFiles.map(file => (
+                                    <div
+                                        key={file.id}
+                                        className={`flex items-center px-4 text-xs border-r border-[#27272a] cursor-pointer h-full min-w-[120px] max-w-[200px] transition-all select-none group
+                                            ${activeFileId === file.id
+                                                ? 'bg-[#1e1e1e] text-white border-t-2 border-t-[var(--primary-purple)]'
+                                                : 'bg-[#09090b] text-gray-500 hover:bg-[#27272a] hover:text-gray-300'
+                                            }`}
+                                        onClick={() => handleFileSelect(file.id)}
                                     >
-                                        <VscClose size={12} />
-                                    </button>
-                                </div>
-                            ))}
+                                        <img src={getFileIcon(file.name)} alt="" className="w-4 h-4 mr-2 flex-shrink-0" />
+                                        <span className="truncate flex-1 font-sans">{file.name}</span>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleCloseFile(file.id); }}
+                                            className={`text-gray-500 hover:text-white hover:bg-[#3f3f46] p-0.5 rounded transition-opacity ml-2 ${activeFileId === file.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                        >
+                                            <VscClose size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="pr-2">
-                            <EditorActions
-                                onShowOutput={() => setSidePanel('output')}
-                                onShowPreview={() => setSidePanel('preview')}
-                                isPreviewEnabled={isPreviewEnabled}
-                            />
-                        </div>
-                    </div>
+                    )}
                     <div className="flex-grow flex flex-col md:flex-row relative">
-                        <div className={sidePanel ? "w-full md:w-1/2 h-1/2 md:h-full" : "w-full h-full"}>
+                        <div className={sidePanel ? "hidden md:block w-full md:w-1/2 h-full" : "w-full h-full"}>
                             {activeFile ? (
                                 <Editor
                                     height="100%"
@@ -419,18 +398,28 @@ const EditorPage = () => {
                                     onChange={handleEditorChange}
                                     options={{
                                         readOnly: !canEdit,
-                                        minimap: { enabled: false }
+                                        minimap: { enabled: false },
+                                        padding: { top: 16 },
+                                        fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                                        fontSize: 14,
+                                        lineHeight: 24,
+                                        scrollBeyondLastLine: false,
+                                        smoothScrolling: true,
                                     }}
                                 />
                             ) : (
-                                <div className="flex items-center justify-center h-full bg-[#1E1E1E] text-gray-500 italic px-4">
-                                    # Select a file from the explorer
+                                <div className="flex flex-col items-center justify-center h-full text-gray-400 select-none bg-[#000000]">
+                                    <div className="mb-6 opacity-80 transform scale-110">
+                                        <Terminal size={120} strokeWidth={3} className="text-white" />
+                                    </div>
+                                    <p className="font-mono text-sm opacity-50 text-gray-300">Select a file from the explorer to start</p>
                                 </div>
                             )}
                         </div>
                         {sidePanel && (
-                            <div className="w-full md:w-1/2 h-1/2 md:h-full border-t md:border-t-0 md:border-l border-gray-700 bg-dark-bg absolute md:static bottom-0 z-10 flex flex-col">
-                                <div className="flex justify-end p-2 md:hidden bg-header-dark border-b border-gray-700">
+                            <div className="w-full md:w-1/2 h-full border-l border-[#27272a] bg-[#0a0a0a] absolute md:static top-0 bottom-0 z-20 flex flex-col shadow-xl">
+                                <div className="flex justify-between items-center p-2 md:hidden bg-[#09090b] border-b border-[#27272a]">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-2">{sidePanel}</span>
                                     <button onClick={() => setSidePanel(null)} className="text-gray-400 hover:text-white">
                                         <VscClose size={20} />
                                     </button>
@@ -458,12 +447,20 @@ const EditorPage = () => {
                     </div>
                 </main>
             </div>
-            <div className="flex-shrink-0 h-7 border-t border-gray-700 flex items-center text-sm text-white justify-between bg-header-dark">
-                <div className="bg-[var(--primary-purple)] h-full flex items-center px-4">
-                    <p className="text-black">CodeLive Status: Connected</p>
+            <div className="flex-shrink-0 h-6 border-t border-[#27272a] flex items-center text-[10px] justify-between bg-[#09090b] relative z-30 select-none">
+                <div className="h-full bg-purple-600 hover:bg-purple-500 text-black flex items-center gap-2 px-4 text-sm font-normal transition-colors cursor-pointer">
+                    <Terminal size={14} className="text-black" />
+                    <span>CodeLive Status: Connected</span>
                 </div>
-                <div className="px-4">
-                    <p>{activeCollaboratorIds.length} collaborators online</p>
+                <div className="flex items-center gap-3 px-3 text-gray-500">
+                    <div className="flex items-center gap-1.5 hover:text-gray-300 transition-colors cursor-pointer">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        <span>{activeCollaboratorIds.length} Online</span>
+                    </div>
+                    <div className="h-3 w-[1px] bg-[#27272a]"></div>
+                    <span className="hover:text-gray-300 transition-colors cursor-pointer">Prettier: On</span>
+                    <div className="h-3 w-[1px] bg-[#27272a]"></div>
+                    <span className="hover:text-gray-300 transition-colors cursor-pointer">UTF-8</span>
                 </div>
             </div>
         </div>

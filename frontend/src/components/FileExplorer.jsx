@@ -1,81 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { VscChevronRight, VscChevronDown, VscNewFile, VscNewFolder, VscTrash, VscClose } from 'react-icons/vsc';
 import axiosInstance from '../utils/axiosInstance';
-
-const iconMap = {
-    // Special Filenames
-    ".gitignore": "file_type_git",
-    "dockerfile": "file_type_docker",
-    ".npmignore": "file_type_npm",
-    ".prettierrc": "file_type_prettier",
-    ".eslintrc": "file_type_eslint",
-    ".babelrc": "file_type_babel2",
-    "babel.config.js": "file_type_babel2",
-    "style.css": "file_type_css2",
-    // Extensions
-    js: "file_type_js",
-    jsx: "file_type_reactjs",
-    ts: "file_type_typescript",
-    tsx: "file_type_reactts",
-    py: "file_type_python",
-    html: "file_type_html",
-    css: "file_type_css2",
-    scss: "file_type_scss",
-    json: "file_type_json",
-    md: "file_type_markdown",
-    svg: "file_type_svg",
-    png: "file_type_image",
-    jpg: "file_type_image",
-    jpeg: "file_type_image",
-    gif: "file_type_image",
-    java: "file_type_java",
-    cpp: "file_type_cpp2",
-    cs: "file_type_csharp",
-    go: "file_type_go",
-    php: "file_type_php",
-    rb: "file_type_ruby",
-    rs: "file_type_rust",
-    sh: "file_type_shell",
-    vue: "file_type_vue",
-    svelte: "file_type_svelte",
-    xml: "file_type_xml",
-    yml: "file_type_yaml",
-    yaml: "file_type_yaml",
-    sql: "file_type_sql",
-    txt: "file_type_text",
-    pdf: "file_type_pdf",
-    zip: "file_type_zip",
-    csv: "file_type_text",
-};
-
-const getFileIcon = (fileName) => {
-    const iconSize = 16;
-    let iconName;
-
-    iconName = iconMap[fileName.toLowerCase()];
-    if (!iconName) {
-        const ext = fileName.split('.').pop().toLowerCase();
-        iconName = iconMap[ext];
-    }
-
-    if (!iconName) {
-        iconName = "default_file";
-    }
-    const iconPath = `/vscode-icons/icons/${iconName}.svg`;
-    return (
-        <img
-            src={iconPath}
-            alt={`${fileName} icon`}
-            width={iconSize}
-            height={iconSize}
-            className="flex-shrink-0"
-            onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = `/vscode-icons/icons/default_file.svg`;
-            }}
-        />
-    );
-};
+import { getFileIcon } from '../utils/fileIcons';
 
 const CreateInput = ({ onConfirm, onCancel, type, depth }) => {
     const [name, setName] = useState('');
@@ -98,7 +24,7 @@ const CreateInput = ({ onConfirm, onCancel, type, depth }) => {
                 onKeyDown={handleKeyDown}
                 onBlur={onCancel}
                 placeholder={placeholder}
-                className="w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[var(--primary-purple)] text-sm"
+                className="w-full px-2 py-1 bg-[#1c1c1c] border border-white/10 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[var(--primary-purple)] text-sm shadow-inner"
                 autoFocus
             />
         </div>
@@ -107,21 +33,21 @@ const CreateInput = ({ onConfirm, onCancel, type, depth }) => {
 
 const FileItemComponent = ({ file, onSelect, onDelete, depth, canEdit }) => (
     <div
-        className="group flex items-center justify-between gap-2 px-2 py-1 hover:bg-gray-700 cursor-pointer text-sm rounded"
+        className="group flex items-center justify-between gap-2 px-2 py-1 hover:bg-[#27272a] cursor-pointer text-sm transition-colors border-l-2 border-transparent hover:border-white/20 select-none"
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
     >
         <div className="flex items-center gap-2 flex-grow min-w-0" onClick={() => onSelect(file.id)}>
-            {getFileIcon(file.name)}
-            <span className="truncate text-white">{file.name}</span>
+            <img src={getFileIcon(file.name)} alt={file.name} className="flex-shrink-0 w-4 h-4" />
+            <span className="truncate text-gray-400 group-hover:text-gray-200 transition-colors">{file.name}</span>
         </div>
 
         {canEdit && (
             <button
                 onClick={(e) => { e.stopPropagation(); onDelete('file', file.id); }}
-                className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition"
+                className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition"
                 title="Delete file"
             >
-                <VscTrash size={12} />
+                <VscTrash size={14} />
             </button>
         )}
     </div>
@@ -138,12 +64,12 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
     return (
         <div>
             <div
-                className={`group flex items-center justify-between gap-2 px-2 py-1 hover:bg-gray-700 cursor-pointer text-sm rounded ${isSelected ? 'bg-blue-900/50' : ''}`}
+                className={`group flex items-center justify-between gap-2 px-2 py-1 hover:bg-[#27272a] cursor-pointer text-sm transition-colors border-l-2 select-none ${isSelected ? 'bg-[#27272a] border-[var(--primary-purple)] text-white' : 'border-transparent text-gray-400'}`}
                 style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
                 <div className="flex items-center gap-2 flex-grow min-w-0" onClick={() => onToggleFolder(folder.id)}>
-                    {isExpanded ? <VscChevronDown size={10} /> : <VscChevronRight size={10} />}
-                    <span className="truncate font-semibold text-white" onClick={handleFolderClick}>
+                    {isExpanded ? <VscChevronDown size={14} /> : <VscChevronRight size={14} />}
+                    <span className={`truncate font-medium ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`} onClick={handleFolderClick}>
                         {folder.name}
                     </span>
                 </div>
@@ -151,10 +77,10 @@ const FolderItemComponent = ({ folder, depth, ...props }) => {
                 {canEdit && (
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete('folder', folder.id); }}
-                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition"
+                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition"
                         title="Delete folder"
                     >
-                        <VscTrash size={12} />
+                        <VscTrash size={14} />
                     </button>
                 )}
             </div>
@@ -240,54 +166,57 @@ const FileExplorer = ({ projectId, onFileSelect, refreshKey, canEdit, onClose })
         }
     };
     return (
-        <aside className="w-full bg-black border-l border-gray-800 text-white font-sans flex flex-col h-full">
-            <div className="flex items-center justify-between px-4 pt-0 h-14 bg-[#1F242A] border-b border-gray-800 flex-shrink-0">
-                <h3 className="text-sm font-bold text-white uppercase">Explorer</h3>
+        <aside className="w-full bg-[#09090b] text-gray-400 font-sans flex flex-col h-full border-r border-[#27272a]">
+            <div className="flex items-center justify-between px-4 h-10 border-b border-[#27272a] bg-[#09090b] flex-shrink-0 select-none">
+                <span className="text-xs font-bold tracking-wider uppercase text-white">Explorer</span>
 
                 <div className="flex gap-1 items-center">
                     {canEdit && (
                         <>
                             <button
                                 onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'file' })}
-                                className="p-1 hover:bg-gray-700 rounded text-gray-400"
+                                className="p-1 hover:bg-[#27272a] rounded text-gray-400 hover:text-white transition-colors"
                                 title="New File"
                             >
-                                <VscNewFile size={14} />
+                                <VscNewFile size={16} />
                             </button>
                             <button
                                 onClick={() => setCreatingItem({ parentId: selectedFolderId, type: 'folder' })}
-                                className="p-1 hover:bg-gray-700 rounded text-gray-400"
+                                className="p-1 hover:bg-[#27272a] rounded text-gray-400 hover:text-white transition-colors"
                                 title="New Folder"
                             >
-                                <VscNewFolder size={14} />
+                                <VscNewFolder size={16} />
                             </button>
                         </>
                     )}
                     {onClose && (
-                        <button onClick={onClose} className="p-1 hover:bg-gray-700 rounded text-gray-400 md:hidden ml-2">
-                            <VscClose size={16} />
+                        <button onClick={onClose} className="p-1 hover:bg-[#27272a] rounded text-gray-400 md:hidden ml-2">
+                            <VscClose size={18} />
                         </button>
                     )}
                 </div>
             </div>
-            <div className="flex-1 overflow-y-auto pt-2">
-                {fileTree.map((folder) => (
-                    <FolderItemComponent
-                        key={folder.id}
-                        folder={folder}
-                        depth={0}
-                        onFileSelect={onFileSelect}
-                        onFolderSelect={setSelectedFolderId}
-                        selectedFolderId={selectedFolderId}
-                        expandedFolders={expandedFolders}
-                        onToggleFolder={handleToggleFolder}
-                        creatingItem={creatingItem}
-                        onCreateItem={handleCreateItem}
-                        onCancelCreate={() => setCreatingItem(null)}
-                        onDelete={handleDeleteItem}
-                        canEdit={canEdit}
-                    />
-                ))}
+            <div className="flex-1 overflow-y-auto pt-2 custom-scrollbar">
+                {fileTree.map((folder) => {
+                    if (!folder) return null;
+                    return (
+                        <FolderItemComponent
+                            key={folder.id}
+                            folder={folder}
+                            depth={0}
+                            onFileSelect={onFileSelect}
+                            onFolderSelect={setSelectedFolderId}
+                            selectedFolderId={selectedFolderId}
+                            expandedFolders={expandedFolders}
+                            onToggleFolder={handleToggleFolder}
+                            creatingItem={creatingItem}
+                            onCreateItem={handleCreateItem}
+                            onCancelCreate={() => setCreatingItem(null)}
+                            onDelete={handleDeleteItem}
+                            canEdit={canEdit}
+                        />
+                    );
+                })}
                 {creatingItem && creatingItem.parentId === null && (
                     <CreateInput
                         type={creatingItem.type}

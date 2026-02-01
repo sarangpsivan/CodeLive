@@ -1,73 +1,69 @@
 // vertical activity bar on the left side of the editor page.
 import React from 'react';
-import { VscFiles, VscCommentDiscussion, VscBell, VscDebugStart, VscGear, VscAccount } from 'react-icons/vsc';
+import { VscFiles, VscCommentDiscussion, VscBell, VscDebugStart, VscGear } from 'react-icons/vsc';
 import { FaRobot } from 'react-icons/fa';
 
 const ActivityBar = ({ activeTab, onTabChange, onRunCode, isRunButtonEnabled, isExecuting, hasUnreadAlerts, hasUnreadChat }) => {
     return (
-        <div className="flex flex-col items-center justify-between w-12 bg-black border-r border-gray-800 py-2 text-gray-300">
-            <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center justify-between w-12 bg-[#09090b] border-r border-[#27272a] py-4 z-30 select-none">
+            <div className="flex flex-col items-center gap-1 w-full">
                 <button
                     onClick={() => onTabChange('explorer')}
-                    className={`p-2 rounded relative hover:bg-gray-700 ${activeTab === 'explorer' ? 'text-white' : ''}`}
+                    className={`w-full h-12 flex items-center justify-center relative transition-colors text-white ${activeTab === 'explorer' ? '' : 'opacity-80 hover:opacity-100'}`}
                     title="Explorer"
                 >
-                    {activeTab === 'explorer' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white"></div>}
-                    <VscFiles size={22} />
+                    {activeTab === 'explorer' && <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-[var(--primary-purple)]"></div>}
+                    <VscFiles size={24} />
                 </button>
 
                 <button
                     onClick={() => onTabChange('chat')}
-                    className={`p-2 rounded relative hover:bg-gray-700 ${activeTab === 'chat' ? 'text-white' : ''}`}
+                    className={`w-full h-12 flex items-center justify-center relative transition-colors text-white ${activeTab === 'chat' ? '' : 'opacity-80 hover:opacity-100'}`}
                     title="Team Chat"
                 >
-                    {activeTab === 'chat' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white"></div>}
-                    <VscCommentDiscussion size={22} />
-                    
+                    {activeTab === 'chat' && <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-[var(--primary-purple)]"></div>}
+                    <VscCommentDiscussion size={24} />
                     {hasUnreadChat && (
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-black"></span>
+                        <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border border-[#09090b]"></span>
                     )}
                 </button>
 
                 <button
                     onClick={() => onTabChange('ai_chat')}
-                    className={`p-2 rounded relative hover:bg-gray-700 ${activeTab === 'ai_chat' ? 'text-[var(--primary-purple)]' : ''}`}
+                    className={`w-full h-12 flex items-center justify-center relative transition-colors text-white ${activeTab === 'ai_chat' ? '' : 'opacity-80 hover:opacity-100'}`}
                     title="AI Assistant"
                 >
-                    {activeTab === 'ai_chat' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white"></div>}
-                    <FaRobot size={22} />
+                    {activeTab === 'ai_chat' && <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-[var(--primary-purple)]"></div>}
+                    <FaRobot size={20} className={activeTab === 'ai_chat' ? 'text-[var(--primary-purple)]' : ''} />
                 </button>
 
                 <button
                     onClick={() => onTabChange('alerts')}
-                    className={`p-2 rounded relative hover:bg-gray-700 ${activeTab === 'alerts' ? 'text-white' : ''}`}
+                    className={`w-full h-12 flex items-center justify-center relative transition-colors text-white ${activeTab === 'alerts' ? '' : 'opacity-80 hover:opacity-100'}`}
                     title="Alerts"
                 >
-                    {activeTab === 'alerts' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white"></div>}
-                    <VscBell size={22} />
-                    
+                    {activeTab === 'alerts' && <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-[var(--primary-purple)]"></div>}
+                    <VscBell size={24} />
                     {hasUnreadAlerts && (
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-black"></span>
+                        <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border border-[#09090b]"></span>
                     )}
                 </button>
+
+                <div className="w-6 h-[1px] bg-[#27272a] my-2"></div>
 
                 <button
                     onClick={onRunCode}
                     disabled={!isRunButtonEnabled || isExecuting}
-                    className={`p-2 rounded relative hover:bg-green-700 ${(!isRunButtonEnabled || isExecuting) ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600'} text-white transition-colors`}
+                    className={`w-full h-12 flex items-center justify-center relative transition-colors ${(!isRunButtonEnabled || isExecuting) ? 'opacity-80 cursor-not-allowed' : 'text-blue-500 hover:text-blue-400'}`}
                     title={isRunButtonEnabled ? (isExecuting ? 'Running...' : 'Run Code') : 'Cannot execute this file type'}
                 >
-                    <VscDebugStart size={22} />
+                    <VscDebugStart size={24} className={isExecuting ? 'animate-spin' : ''} />
                 </button>
             </div>
 
-            <div className="flex flex-col items-center gap-4">
-                <button className="p-2 rounded relative hover:bg-gray-700" title="Profile (Placeholder)">
-                    <VscAccount size={22} />
-                </button>
-
-                <button className="p-2 rounded relative hover:bg-gray-700" title="Settings (Placeholder)">
-                    <VscGear size={22} />
+            <div className="flex flex-col items-center w-full">
+                <button className="w-full h-12 flex items-center justify-center text-white opacity-80 hover:opacity-100 transition-colors" title="Settings">
+                    <VscGear size={24} />
                 </button>
             </div>
         </div>
