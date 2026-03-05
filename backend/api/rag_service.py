@@ -26,7 +26,7 @@ def get_embeddings():
         return None
         
     return TruncatedGoogleEmbeddings(
-        model="models/embedding-001", 
+        model="models/gemini-embedding-001", 
         google_api_key=settings.GOOGLE_API_KEY,
         task_type="retrieval_document"
     )
