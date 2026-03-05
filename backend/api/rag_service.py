@@ -3,7 +3,7 @@ import re
 from django.conf import settings
 from .models import File, Project
 from langchain_groq import ChatGroq
-from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
@@ -11,10 +11,25 @@ from langchain_core.documents import Document
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
+class TruncatedGoogleEmbeddings(GoogleGenerativeAIEmbeddings):
+    def embed_documents(self, texts):
+        embeddings = super().embed_documents(texts)
+        return [embedding[:384] for embedding in embeddings]
+        
+    def embed_query(self, text):
+        embedding = super().embed_query(text)
+        return embedding[:384]
+
 def get_embeddings():
-    # FastEmbed runs locally, no API key needed for embeddings
-    # uses "BAAI/bge-small-en-v1.5" by default which is excellent
-    return FastEmbedEmbeddings()
+    if not settings.GOOGLE_API_KEY:
+        print("RAG Error: GOOGLE_API_KEY not found.")
+        return None
+        
+    return TruncatedGoogleEmbeddings(
+        model="models/text-embedding-004", 
+        google_api_key=settings.GOOGLE_API_KEY,
+        task_type="retrieval_document"
+    )
 
 def get_vectorstore():
     embeddings = get_embeddings()

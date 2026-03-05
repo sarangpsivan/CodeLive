@@ -28,7 +28,7 @@ uvicorn[standard]
 langchain-pinecone
 langchain-text-splitters
 pinecone-client
-fastembed
+langchain-google-genai
 
 # Utilities
 Pillow==11.1.0
